@@ -4,7 +4,7 @@ import type { Listing } from './types';
 // Until images are uploaded these resolve to placeholder transformation URLs;
 // once the named images exist in Cloudinary the same paths serve real photos.
 const CLD = 'https://res.cloudinary.com/dkn6tnxao/image/upload';
-const T = (name: string) => `${CLD}/c_fill,w_900,h_600,q_auto,f_auto/homesconnect/${name}.jpg`;
+const T = (name: string) => `${CLD}/c_fill/w_900/h_600/q_auto/f_auto/homesconnect/${name}.jpg`;
 
 // 6 hero property images — keyed by descriptive slug.
 const IMG = {

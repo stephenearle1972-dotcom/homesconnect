@@ -5,7 +5,7 @@ import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 
-const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill,w_1800,h_1100,q_auto,f_auto/homesconnect/property-02-bushveld-lodge.jpg';
+const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill/w_1800/h_1100/q_auto/f_auto/homesconnect/property-02-bushveld-lodge.jpg';
 
 export default function HomePage() {
   const [featured, setFeatured] = useState<Listing[]>([]);
