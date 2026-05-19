@@ -62,7 +62,9 @@ export function loadListings(): Promise<Listing[]> {
       const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
       const rows = (parsed.data || []).filter((r) => r.id);
       if (!rows.length) return SEED_LISTINGS;
-      return rows.map(mapRow).filter((l) => l.status !== 'archived');
+      // Only show fully-active listings. Pending-payment rows from the listing
+      // form, archived rows, etc. stay hidden until the ITN webhook flips them.
+      return rows.map(mapRow).filter((l) => !l.status || l.status === 'active');
     } catch (err) {
       console.warn('[HomesConnect] CSV load failed, using seed data:', err);
       return SEED_LISTINGS;

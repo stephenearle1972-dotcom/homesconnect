@@ -64,6 +64,11 @@ h1, h2, h3, h4 {
   @apply inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] px-3 py-1.5 rounded-full font-medium;
 }
 
+.input {
+  @apply w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal transition-colors;
+}
+.input::placeholder { color: rgba(255,255,255,0.4); }
+
 /* Scrollbar (dark) */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: #0d1b12; }

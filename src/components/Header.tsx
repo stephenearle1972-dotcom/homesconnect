@@ -10,19 +10,23 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export default function Header() {
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-bg-dark/80 border-b border-border-soft">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center"><Logo /></Link>
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-7">
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/listings" className={navLinkClass}>Listings</NavLink>
           <NavLink to="/search" className={navLinkClass}>Search</NavLink>
-          <a href="/#how-it-works" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">How it works</a>
           <a href="/#pricing" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">Pricing</a>
         </nav>
-        <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa text-sm py-2 px-4 md:px-5">
-          <WAIcon />
-          <span className="hidden sm:inline">WhatsApp</span>
-        </a>
+        <div className="flex items-center gap-2 md:gap-3">
+          <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa text-sm py-2 px-3 md:px-4" aria-label="Chat on WhatsApp">
+            <WAIcon />
+            <span className="hidden lg:inline">WhatsApp</span>
+          </a>
+          <Link to="/list-property" className="btn-gold text-sm py-2 px-4 md:px-5">
+            List Property
+          </Link>
+        </div>
       </div>
     </header>
   );

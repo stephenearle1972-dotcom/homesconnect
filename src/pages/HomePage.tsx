@@ -5,6 +5,7 @@ import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 import ChatPanel from '../components/ChatPanel';
+import WhatsappQR from '../components/WhatsappQR';
 
 const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill/w_1800/h_1100/q_auto/f_auto/homesconnect/property-02-bushveld-lodge.jpg';
 
@@ -157,7 +158,15 @@ function BotDemo() {
             The HomesConnect WhatsApp bot understands natural language. Buyers describe what they want and
             the bot replies with matching properties — complete with price, location, specs and the agent’s direct line.
           </p>
-          <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa mt-8">Try it now</a>
+          <div className="flex flex-wrap items-center gap-4 mt-8">
+            <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">Try it now</a>
+            <div className="hidden md:block">
+              <WhatsappQR size={140} label="Scan to chat" />
+            </div>
+          </div>
+          <div className="md:hidden mt-8 flex justify-center">
+            <WhatsappQR size={140} label="Scan to chat" />
+          </div>
         </div>
         <div className="rounded-3xl p-5 md:p-7 border border-white/10" style={{ background: 'linear-gradient(180deg,#0b1d14,#0d1b12)' }}>
           <div className="flex flex-col gap-3 max-w-md mx-auto text-sm">
@@ -221,7 +230,7 @@ function Pricing() {
       highlight: false,
       cta: 'Get Started',
       ctaStyle: 'gold' as const,
-      waText: "Hi, I'd like to list a property on HomesConnect (Basic plan – R99/mo)",
+      tierParam: 'basic',
     },
     {
       name: 'Enhanced Listing', price: 'R249', per: '/mo per property',
@@ -229,15 +238,15 @@ function Pricing() {
       highlight: true,
       cta: 'Get Started',
       ctaStyle: 'gold' as const,
-      waText: "Hi, I'm interested in the Enhanced listing plan (R249/mo)",
+      tierParam: 'enhanced',
     },
     {
       name: 'Agency Package', price: 'R999', per: '/mo per agency',
       features: ['Up to 10 listings', '5 agent sub-accounts', '15 photos per listing', 'Top of results', 'Branded profile', '3 featured / month'],
       highlight: false,
-      cta: 'Contact Sales',
+      cta: 'Get Started',
       ctaStyle: 'wa' as const,
-      waText: "Hi, I'd like to discuss the Agency package (R999/mo)",
+      tierParam: 'agency',
     },
   ];
   return (
@@ -267,14 +276,12 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={`https://wa.me/27767959872?text=${encodeURIComponent(t.waText)}`}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to={`/list-property?tier=${t.tierParam}`}
                 className={`${t.ctaStyle === 'wa' ? 'btn-wa' : 'btn-gold'} w-full mt-7`}
               >
                 {t.cta}
-              </a>
+              </Link>
             </div>
           ))}
         </div>

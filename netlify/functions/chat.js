@@ -52,7 +52,9 @@ async function loadListings() {
   const res = await fetch(CSV_URL);
   if (!res.ok) throw new Error(`CSV ${res.status}`);
   const text = await res.text();
-  const rows = parseCsv(text);
+  // Only expose fully-active listings to the chat assistant. Filter out
+  // pending_payment rows (intake form before PayFast ITN confirms).
+  const rows = parseCsv(text).filter((r) => !r.status || r.status === 'active');
   cache = { rows, fetchedAt: now };
   return rows;
 }

@@ -7,6 +7,8 @@ import ListingsPage from './pages/ListingsPage';
 import ListingDetailPage from './pages/ListingDetailPage';
 import AgentPage from './pages/AgentPage';
 import SearchPage from './pages/SearchPage';
+import ListPropertyPage from './pages/ListPropertyPage';
+import ListingSuccessPage from './pages/ListingSuccessPage';
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="/listing/:id" element={<ListingDetailPage />} />
           <Route path="/agent/:slug" element={<AgentPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/list-property" element={<ListPropertyPage />} />
+          <Route path="/listing-success" element={<ListingSuccessPage />} />
         </Routes>
       </main>
       <Footer />

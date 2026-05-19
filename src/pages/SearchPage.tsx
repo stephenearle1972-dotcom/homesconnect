@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import ChatPanel from '../components/ChatPanel';
+import WhatsappQR from '../components/WhatsappQR';
 import { WA_LINK } from '../lib/constants';
 
 export default function SearchPage() {
@@ -20,13 +21,18 @@ export default function SearchPage() {
         />
       </div>
 
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4 card-soft rounded-2xl px-6 py-5">
-        <Link to="/listings" className="text-teal-bright hover:text-white transition-colors">
-          Or browse all listings →
-        </Link>
-        <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">
-          Or message us on WhatsApp
-        </a>
+      <div className="mt-10 grid gap-6 md:grid-cols-[1fr,auto] items-center card-soft rounded-2xl px-6 py-6">
+        <div className="space-y-3">
+          <Link to="/listings" className="block text-teal-bright hover:text-white transition-colors">
+            Or browse all listings →
+          </Link>
+          <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">
+            Or message us on WhatsApp
+          </a>
+        </div>
+        <div className="justify-self-center md:justify-self-end">
+          <WhatsappQR size={140} label="Scan to chat" />
+        </div>
       </div>
     </div>
   );
