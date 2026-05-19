@@ -15,6 +15,7 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-8">
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/listings" className={navLinkClass}>Listings</NavLink>
+          <NavLink to="/search" className={navLinkClass}>Search</NavLink>
           <a href="/#how-it-works" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">How it works</a>
           <a href="/#pricing" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">Pricing</a>
         </nav>

@@ -4,6 +4,7 @@ import { WA_LINK } from '../lib/constants';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
+import ChatPanel from '../components/ChatPanel';
 
 const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill/w_1800/h_1100/q_auto/f_auto/homesconnect/property-02-bushveld-lodge.jpg';
 
@@ -23,6 +24,7 @@ export default function HomePage() {
       <Features />
       <FeaturedListings featured={featured} />
       <BotDemo />
+      <EmbeddedSearch />
       <Pricing />
     </>
   );
@@ -175,6 +177,31 @@ function BotDemo() {
   );
 }
 
+function EmbeddedSearch() {
+  return (
+    <section id="search" className="py-20 md:py-28">
+      <div className="max-w-5xl mx-auto px-4 md:px-8">
+        <SectionHeading eyebrow="Live demo" title="Try It — Search Properties Right Now" />
+        <p className="mt-4 text-soft max-w-2xl">
+          Ask our AI assistant anything about available properties. It searches our live listings in real time.
+        </p>
+        <div className="mt-10 h-[440px] md:h-[480px]">
+          <ChatPanel
+            variant="floating"
+            placeholder="Try: '3 bed house in Durban under R2.5M'"
+            className="h-full"
+          />
+        </div>
+        <div className="mt-6 text-center">
+          <Link to="/search" className="text-sm text-teal-bright hover:text-white transition-colors">
+            Open full-page search →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Bubble({ side, children }: { side: 'user' | 'bot'; children: React.ReactNode }) {
   const isUser = side === 'user';
   return (
@@ -192,16 +219,25 @@ function Pricing() {
       name: 'Basic Listing', price: 'R99', per: '/mo per property',
       features: ['1 listing', '3 photos', 'Bot visibility', 'Basic agent profile', 'Web listing', 'Lead notifications'],
       highlight: false,
+      cta: 'Get Started',
+      ctaStyle: 'gold' as const,
+      waText: "Hi, I'd like to list a property on HomesConnect (Basic plan – R99/mo)",
     },
     {
       name: 'Enhanced Listing', price: 'R249', per: '/mo per property',
       features: ['1 listing', '10 photos', 'Priority bot results', 'Enhanced profile', 'Video / tour links', 'Analytics', '1 featured / month'],
       highlight: true,
+      cta: 'Get Started',
+      ctaStyle: 'gold' as const,
+      waText: "Hi, I'm interested in the Enhanced listing plan (R249/mo)",
     },
     {
       name: 'Agency Package', price: 'R999', per: '/mo per agency',
       features: ['Up to 10 listings', '5 agent sub-accounts', '15 photos per listing', 'Top of results', 'Branded profile', '3 featured / month'],
       highlight: false,
+      cta: 'Contact Sales',
+      ctaStyle: 'wa' as const,
+      waText: "Hi, I'd like to discuss the Agency package (R999/mo)",
     },
   ];
   return (
@@ -231,12 +267,32 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
+              <a
+                href={`https://wa.me/27767959872?text=${encodeURIComponent(t.waText)}`}
+                target="_blank"
+                rel="noreferrer"
+                className={`${t.ctaStyle === 'wa' ? 'btn-wa' : 'btn-gold'} w-full mt-7`}
+              >
+                {t.cta}
+              </a>
             </div>
           ))}
         </div>
         <p className="mt-6 text-xs text-faint text-center">
           All prices exclude 15% VAT. Contact us for custom packages.
         </p>
+
+        <div className="mt-12 card-soft rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 text-sm text-soft text-center">
+          <span>Questions? WhatsApp us at</span>
+          <a href="https://wa.me/27767959872" target="_blank" rel="noreferrer" className="text-teal-bright hover:text-white transition-colors font-semibold">
+            +27 76 795 9872
+          </a>
+          <span className="hidden sm:inline">or email</span>
+          <span className="sm:hidden">or</span>
+          <a href="mailto:hello@townconnect.co.za" className="text-teal-bright hover:text-white transition-colors font-semibold">
+            hello@townconnect.co.za
+          </a>
+        </div>
       </div>
     </section>
   );

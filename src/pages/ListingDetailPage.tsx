@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import { WA_NUMBER } from '../lib/constants';
+import { toSlug } from '../lib/slug';
 
 export default function ListingDetailPage() {
   const { id } = useParams();
@@ -93,7 +94,13 @@ export default function ListingDetailPage() {
         <aside className="lg:sticky lg:top-28 self-start space-y-4">
           <div className="card-soft rounded-2xl p-6">
             <p className="text-xs uppercase tracking-[0.2em] text-faint">Listing agent</p>
-            <p className="mt-2 font-display text-xl text-white">{listing.agentName || 'HomesConnect Agent'}</p>
+            {listing.agentName ? (
+              <Link to={`/agent/${toSlug(listing.agentName)}`} className="block mt-2 font-display text-xl text-white hover:text-teal-bright transition-colors">
+                {listing.agentName}
+              </Link>
+            ) : (
+              <p className="mt-2 font-display text-xl text-white">HomesConnect Agent</p>
+            )}
             {listing.agentAgency && <p className="text-soft text-sm mt-1">{listing.agentAgency}</p>}
             {listing.agentPhone && <p className="text-soft text-sm mt-1">{formatPhone(listing.agentPhone)}</p>}
             <a href={enquireWa} target="_blank" rel="noreferrer" className="btn-wa w-full mt-5">
@@ -103,6 +110,11 @@ export default function ListingDetailPage() {
               <a href={agentWa} target="_blank" rel="noreferrer" className="btn-ghost w-full mt-3">
                 WhatsApp the agent direct
               </a>
+            )}
+            {listing.agentName && (
+              <Link to={`/agent/${toSlug(listing.agentName)}`} className="block mt-3 text-center text-sm text-teal-bright hover:text-white transition-colors">
+                View all listings by this agent →
+              </Link>
             )}
           </div>
           <div className="card-soft rounded-2xl p-5">
