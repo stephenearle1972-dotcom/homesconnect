@@ -1,0 +1,28 @@
+export type Listing = {
+  id: string;
+  type: 'sale' | 'rent';
+  status: string;
+  tier: 'basic' | 'enhanced' | 'agency' | '';
+  title: string;
+  price: number;
+  priceDisplay: string;
+  bedrooms: number;
+  bathrooms: number;
+  garage: number;
+  garden: boolean;
+  pool: boolean;
+  petFriendly: boolean;
+  propertyType: string;
+  suburb: string;
+  city: string;
+  province: string;
+  description: string;
+  imageUrl: string;
+  image2: string;
+  image3: string;
+  agentName: string;
+  agentPhone: string;
+  agentAgency: string;
+  featured: boolean;
+  dateListed: string;
+};
