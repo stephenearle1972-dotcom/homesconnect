@@ -9,6 +9,8 @@ import AgentPage from './pages/AgentPage';
 import SearchPage from './pages/SearchPage';
 import ListPropertyPage from './pages/ListPropertyPage';
 import ListingSuccessPage from './pages/ListingSuccessPage';
+import ConveyancersPage from './pages/ConveyancersPage';
+import ListConveyancerPage from './pages/ListConveyancerPage';
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/list-property" element={<ListPropertyPage />} />
           <Route path="/listing-success" element={<ListingSuccessPage />} />
+          <Route path="/conveyancers" element={<ConveyancersPage />} />
+          <Route path="/list-conveyancer" element={<ListConveyancerPage />} />
         </Routes>
       </main>
       <Footer />

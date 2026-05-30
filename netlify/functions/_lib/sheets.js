@@ -88,6 +88,15 @@ export async function appendRow(sheetId, row) {
   );
 }
 
+// Append to a SPECIFIC named tab (appendRow targets the first tab only).
+export async function appendRowToTab(sheetId, tab, row) {
+  return sheetsApi(
+    'POST',
+    `/${sheetId}/values/${encodeURIComponent(tab + '!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { values: [row] }
+  );
+}
+
 export async function getAllValues(sheetId, range = 'A1:Z2000') {
   const tab = await getFirstTabName(sheetId);
   const res = await sheetsApi('GET', `/${sheetId}/values/${encodeURIComponent(tab + '!' + range)}`);

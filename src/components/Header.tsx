@@ -16,6 +16,7 @@ export default function Header() {
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/listings" className={navLinkClass}>Listings</NavLink>
           <NavLink to="/search" className={navLinkClass}>Search</NavLink>
+          <NavLink to="/conveyancers" className={navLinkClass}>Conveyancers</NavLink>
           <a href="/#pricing" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">Pricing</a>
         </nav>
         <div className="flex items-center gap-2 md:gap-3">
