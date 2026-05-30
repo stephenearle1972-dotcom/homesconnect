@@ -42,12 +42,16 @@ function buildSignString(pairs, passphrase) {
   return passphrase ? `${enc}&passphrase=${payfastEncode(passphrase)}` : enc;
 }
 
-async function flipRowToActive(listingId) {
+// Look up the pending row, verify the paid amount matches the tier it was created
+// with, then flip status -> active. Throws on any mismatch so the caller can log it
+// and leave the listing unpublished.
+async function flipRowToActive(listingId, amountGross) {
   const { tab, values: rows } = await getAllValues(SHEET_ID);
   if (!rows.length) throw new Error('Sheet empty');
   const headers = rows[0];
   const idCol = headers.indexOf('id');
   const statusCol = headers.indexOf('status');
+  const tierCol = headers.indexOf('tier');
   if (idCol === -1 || statusCol === -1) throw new Error('Missing id/status column');
 
   let rowIdx = -1;
@@ -56,9 +60,17 @@ async function flipRowToActive(listingId) {
   }
   if (rowIdx === -1) throw new Error(`Listing ${listingId} not found`);
 
+  // Verify the gross amount paid matches the tier's price (cents-tolerant).
+  const tier = tierCol === -1 ? null : rows[rowIdx][tierCol];
+  const expected = tier ? TIER_AMOUNT[tier] : null;
+  const paid = Math.round(Number(amountGross) || 0);
+  if (expected != null && paid !== expected) {
+    throw new Error(`amount mismatch for ${listingId}: tier=${tier} expected R${expected}, paid R${paid}`);
+  }
+
   const a1Cell = `${colLetter(statusCol)}${rowIdx + 1}`;
   await updateCell(SHEET_ID, tab, a1Cell, 'active');
-  return { rowIdx, cellA1: `${tab}!${a1Cell}` };
+  return { rowIdx, cellA1: `${tab}!${a1Cell}`, tier, paid };
 }
 
 function colLetter(idx) {
@@ -103,12 +115,12 @@ export const handler = async (event) => {
     return { statusCode: 200, body: 'OK' };
   }
 
-  // 4. Flip row to active in the sheet
+  // 4. Verify amount matches the tier, then flip row to active in the sheet
   try {
-    const result = await flipRowToActive(map.m_payment_id);
-    console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, 'in', (Date.now() - t0) + 'ms');
+    const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
+    console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');
   } catch (err) {
-    console.error('[payfast-itn] sheet update failed:', err.message);
+    console.error('[payfast-itn] not activated:', err.message);
     // Still 200 — PayFast retries on non-200 and re-flipping is idempotent anyway.
   }
 

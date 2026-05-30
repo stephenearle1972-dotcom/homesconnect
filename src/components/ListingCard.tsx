@@ -24,6 +24,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {listing.featured && (
               <span className="chip bg-gold/90 text-bg-dark">Featured</span>
             )}
+            {listing.sellerType === 'private' && (
+              <span className="chip bg-teal/90 text-white">Private seller</span>
+            )}
           </div>
         </div>
         <div className="px-5 pt-5">
@@ -41,14 +44,23 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       </Link>
       {listing.agentName && (
         <div className="px-5 pb-5 pt-3 mt-2 border-t border-white/5 text-xs">
-          <span className="text-faint">Agent: </span>
-          <Link
-            to={`/agent/${toSlug(listing.agentName)}`}
-            className="text-teal-bright hover:text-white transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {listing.agentName}
-          </Link>
+          {listing.sellerType === 'private' ? (
+            <>
+              <span className="text-faint">Private seller: </span>
+              <span className="text-teal-bright">{listing.agentName}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-faint">Agent: </span>
+              <Link
+                to={`/agent/${toSlug(listing.agentName)}`}
+                className="text-teal-bright hover:text-white transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {listing.agentName}
+              </Link>
+            </>
+          )}
         </div>
       )}
     </article>

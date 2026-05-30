@@ -43,6 +43,10 @@ function mapRow(row: Record<string, string>): Listing {
     agentAgency: row.agent_agency || row.agentAgency || '',
     featured: toBool(row.featured),
     dateListed: row.date_listed || row.dateListed || '',
+    sellerType: (row.seller_type === 'private' ? 'private' : 'agent'),
+    whatsapp: row.whatsapp || '',
+    sizeSqm: toInt(row.size_sqm),
+    address: row.address || '',
   };
 }
 

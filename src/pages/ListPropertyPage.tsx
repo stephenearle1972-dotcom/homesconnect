@@ -12,13 +12,28 @@ const PROVINCES = [
 
 const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
 
+type Seller = 'agent' | 'private';
 type Tier = 'basic' | 'enhanced' | 'agency';
 
-const TIERS: { id: Tier; name: string; price: string; amount: number; photoLimit: number; features: string[] }[] = [
-  { id: 'basic',    name: 'Basic Listing',    price: 'R99',  amount: 99,  photoLimit: 3,  features: ['1 listing', '3 photos', 'Bot visibility', 'Basic agent profile', 'Web listing', 'Lead notifications'] },
-  { id: 'enhanced', name: 'Enhanced Listing', price: 'R249', amount: 249, photoLimit: 10, features: ['1 listing', '10 photos', 'Priority bot results', 'Enhanced profile', 'Video / tour links', 'Analytics', '1 featured / month'] },
-  { id: 'agency',   name: 'Agency Package',   price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '5 sub-accounts', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] },
-];
+// The FSBO disclaimer text is fixed by the spec — show it verbatim.
+const FSBO_DISCLAIMER =
+  'This is a private listing platform. TownConnect does not act as an estate agent or ' +
+  'property practitioner, does not negotiate, hold deposits, or charge commission on any ' +
+  'sale. All negotiations and the sale itself are directly between the buyer and the ' +
+  'seller. By listing, you confirm you are entitled to sell or let this property.';
+
+// Tier id, price and photo limit are identical for both seller types. Only the
+// top tier's NAME differs: agents see "Agency Package", private sellers see "Premium"
+// (an individual is not an agency).
+function tiersFor(seller: Seller): { id: Tier; name: string; price: string; amount: number; photoLimit: number; features: string[] }[] {
+  return [
+    { id: 'basic',    name: 'Basic Listing',    price: 'R99',  amount: 99,  photoLimit: 3,  features: ['1 listing', '3 photos', 'Bot visibility', 'Web listing', 'Lead notifications'] },
+    { id: 'enhanced', name: 'Enhanced Listing', price: 'R249', amount: 249, photoLimit: 10, features: ['1 listing', '10 photos', 'Priority bot results', 'Video / tour links', 'Analytics', '1 featured / month'] },
+    seller === 'private'
+      ? { id: 'agency', name: 'Premium',        price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] }
+      : { id: 'agency', name: 'Agency Package', price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '5 sub-accounts', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] },
+  ];
+}
 
 type FormState = {
   agent_name: string;
@@ -26,6 +41,7 @@ type FormState = {
   agent_phone: string;
   agent_email: string;
   fidelity_fund: string;
+  whatsapp: string;
   title: string;
   type: 'sale' | 'rent';
   price: string;
@@ -33,6 +49,8 @@ type FormState = {
   bedrooms: number;
   bathrooms: number;
   garage: number;
+  size: string;
+  address: string;
   garden: boolean;
   pool: boolean;
   pet_friendly: boolean;
@@ -43,34 +61,52 @@ type FormState = {
 };
 
 const INITIAL: FormState = {
-  agent_name: '', agent_agency: '', agent_phone: '', agent_email: '', fidelity_fund: '',
+  agent_name: '', agent_agency: '', agent_phone: '', agent_email: '', fidelity_fund: '', whatsapp: '',
   title: '', type: 'sale', price: '', property_type: 'house',
-  bedrooms: 3, bathrooms: 2, garage: 1,
+  bedrooms: 3, bathrooms: 2, garage: 1, size: '', address: '',
   garden: false, pool: false, pet_friendly: false,
   suburb: '', city: '', province: 'Gauteng',
   description: '',
 };
 
 export default function ListPropertyPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const cancelled = params.get('cancelled') === 'true';
+  const initialSeller: Seller = params.get('seller') === 'private' ? 'private' : 'agent';
   const initialTier = (params.get('tier') as Tier) || 'enhanced';
 
+  const [seller, setSeller] = useState<Seller>(initialSeller);
   const [tier, setTier] = useState<Tier>(initialTier);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [disclaimerOk, setDisclaimerOk] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isPrivate = seller === 'private';
+  const TIERS = tiersFor(seller);
 
   useEffect(() => {
     const valid = TIERS.find((t) => t.id === initialTier);
     if (valid) setTier(initialTier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTier]);
 
   const photoLimit = TIERS.find((t) => t.id === tier)!.photoLimit;
   const amount = TIERS.find((t) => t.id === tier)!.amount;
+
+  function chooseSeller(next: Seller) {
+    setSeller(next);
+    setErrors({});
+    setDisclaimerOk(false);
+    // Reflect the choice in the URL so the page is shareable / bookmarkable.
+    const p = new URLSearchParams(params);
+    if (next === 'private') p.set('seller', 'private'); else p.delete('seller');
+    p.delete('cancelled');
+    setParams(p, { replace: true });
+  }
 
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -115,10 +151,10 @@ export default function ListPropertyPage() {
     const req = (k: keyof FormState, label: string) => {
       if (!String(form[k] ?? '').trim()) errs[k as string] = `${label} required`;
     };
-    req('agent_name', 'Full name');
+    req('agent_name', isPrivate ? 'Full name' : 'Full name');
     req('agent_phone', 'Phone number');
     req('agent_email', 'Email');
-    req('fidelity_fund', 'FFC number');
+    if (!isPrivate) req('fidelity_fund', 'FFC number');
     req('title', 'Property title');
     req('suburb', 'Suburb');
     req('city', 'City');
@@ -126,6 +162,7 @@ export default function ListPropertyPage() {
     if (!form.price || Number(form.price) <= 0) errs.price = 'Price required (numeric)';
     if (form.agent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.agent_email)) errs.agent_email = 'Enter a valid email';
     if (images.length === 0) errs.images = `Add at least 1 photo (up to ${photoLimit})`;
+    if (isPrivate && !disclaimerOk) errs.disclaimer = 'Please accept the private-listing terms to continue';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -147,6 +184,10 @@ export default function ListPropertyPage() {
           price: Number(form.price),
           tier,
           images,
+          seller_type: seller,
+          // Private sellers don't have a Fidelity Fund Certificate.
+          fidelity_fund: isPrivate ? '' : form.fidelity_fund,
+          disclaimer_accepted: isPrivate ? disclaimerOk : undefined,
         }),
       });
       const data = await res.json();
@@ -164,12 +205,12 @@ export default function ListPropertyPage() {
     }
   }
 
-  function submitToPayfast(url: string, params: Record<string, string>) {
+  function submitToPayfast(url: string, fields: Record<string, string>) {
     const f = document.createElement('form');
     f.method = 'POST';
     f.action = url;
     f.style.display = 'none';
-    for (const [k, v] of Object.entries(params)) {
+    for (const [k, v] of Object.entries(fields)) {
       const input = document.createElement('input');
       input.type = 'hidden'; input.name = k; input.value = String(v);
       f.appendChild(input);
@@ -187,6 +228,22 @@ export default function ListPropertyPage() {
         goes live on the website and WhatsApp bot within 48 hours.
       </p>
 
+      {/* Seller-type chooser */}
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <SellerCard
+          active={!isPrivate}
+          onClick={() => chooseSeller('agent')}
+          title="Estate agent"
+          blurb="Registered agent or agency with a Fidelity Fund Certificate."
+        />
+        <SellerCard
+          active={isPrivate}
+          onClick={() => chooseSeller('private')}
+          title="Private seller"
+          blurb="Selling or letting your own property — no agent involved."
+        />
+      </div>
+
       {cancelled && (
         <div className="mt-6 rounded-2xl p-5 border border-gold/40 bg-gold/10 text-soft">
           Payment was cancelled. Your details are still on this page — fill in any missing fields and click <strong>Pay &amp; List</strong> to try again.
@@ -203,7 +260,6 @@ export default function ListPropertyPage() {
                 type="button"
                 onClick={() => {
                   setTier(t.id);
-                  // Trim images if the new tier has a lower limit
                   if (images.length > t.photoLimit) setImages((prev) => prev.slice(0, t.photoLimit));
                 }}
                 className={`text-left rounded-2xl p-5 transition-all ${
@@ -222,24 +278,33 @@ export default function ListPropertyPage() {
           </div>
         </FormSection>
 
-        {/* Agent details */}
-        <FormSection title="2. Agent details">
+        {/* Contact details */}
+        <FormSection title={isPrivate ? '2. Your contact details' : '2. Agent details'}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Full name" required error={errors.agent_name}>
               <input type="text" value={form.agent_name} onChange={(e) => setField('agent_name', e.target.value)} className="input" />
             </Field>
-            <Field label="Agency name" hint="optional">
-              <input type="text" value={form.agent_agency} onChange={(e) => setField('agent_agency', e.target.value)} className="input" />
-            </Field>
-            <Field label="Phone (WhatsApp)" required error={errors.agent_phone}>
+            {!isPrivate && (
+              <Field label="Agency name" hint="optional">
+                <input type="text" value={form.agent_agency} onChange={(e) => setField('agent_agency', e.target.value)} className="input" />
+              </Field>
+            )}
+            <Field label="Phone" required error={errors.agent_phone}>
               <input type="tel" placeholder="0821234567" value={form.agent_phone} onChange={(e) => setField('agent_phone', e.target.value)} className="input" />
             </Field>
+            {isPrivate && (
+              <Field label="WhatsApp number" hint="optional — defaults to your phone">
+                <input type="tel" placeholder="0821234567" value={form.whatsapp} onChange={(e) => setField('whatsapp', e.target.value)} className="input" />
+              </Field>
+            )}
             <Field label="Email" required error={errors.agent_email}>
               <input type="email" value={form.agent_email} onChange={(e) => setField('agent_email', e.target.value)} className="input" />
             </Field>
-            <Field label="Fidelity Fund Certificate number" required error={errors.fidelity_fund} className="md:col-span-2">
-              <input type="text" value={form.fidelity_fund} onChange={(e) => setField('fidelity_fund', e.target.value)} className="input" />
-            </Field>
+            {!isPrivate && (
+              <Field label="Fidelity Fund Certificate number" required error={errors.fidelity_fund} className="md:col-span-2">
+                <input type="text" value={form.fidelity_fund} onChange={(e) => setField('fidelity_fund', e.target.value)} className="input" />
+              </Field>
+            )}
           </div>
         </FormSection>
 
@@ -263,6 +328,9 @@ export default function ListPropertyPage() {
                 {PROPERTY_TYPES.map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}
               </select>
             </Field>
+            <Field label="Size (m²)" hint="optional">
+              <input type="number" min={0} step={1} placeholder="e.g. 180" value={form.size} onChange={(e) => setField('size', e.target.value)} className="input" />
+            </Field>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Beds"><NumStepper value={form.bedrooms} min={1} max={10} onChange={(v) => setField('bedrooms', v)} /></Field>
               <Field label="Baths"><NumStepper value={form.bathrooms} min={1} max={5} onChange={(v) => setField('bathrooms', v)} /></Field>
@@ -285,6 +353,9 @@ export default function ListPropertyPage() {
               <select value={form.province} onChange={(e) => setField('province', e.target.value)} className="input">
                 {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
+            </Field>
+            <Field label="Street address" hint="optional / approximate" className="md:col-span-2">
+              <input type="text" placeholder="e.g. 12 Oak Avenue (or leave blank)" value={form.address} onChange={(e) => setField('address', e.target.value)} className="input" />
             </Field>
             <Field label="Description" hint="2-3 sentences" required error={errors.description} className="md:col-span-2">
               <textarea rows={4} value={form.description} onChange={(e) => setField('description', e.target.value)} className="input resize-none" />
@@ -322,16 +393,47 @@ export default function ListPropertyPage() {
           {errors.images && <p data-error="true" className="mt-3 text-sm text-red-300">{errors.images}</p>}
         </FormSection>
 
+        {/* FSBO disclaimer — private sellers only */}
+        {isPrivate && (
+          <FormSection title="5. Private-listing terms">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-soft text-sm leading-relaxed">
+              {FSBO_DISCLAIMER}
+            </div>
+            <label
+              data-error={errors.disclaimer ? 'true' : undefined}
+              className="mt-4 flex items-start gap-3 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={disclaimerOk}
+                onChange={(e) => {
+                  setDisclaimerOk(e.target.checked);
+                  if (errors.disclaimer) setErrors((prev) => { const n = { ...prev }; delete n.disclaimer; return n; });
+                }}
+                className="mt-1 h-5 w-5 accent-teal flex-shrink-0"
+              />
+              <span className="text-sm text-white">
+                I have read and accept the private-listing terms above, and confirm I am
+                entitled to sell or let this property. <span className="text-gold-bright">*</span>
+              </span>
+            </label>
+            {errors.disclaimer && <p className="mt-2 text-sm text-red-300">{errors.disclaimer}</p>}
+          </FormSection>
+        )}
+
         {/* Submit */}
         <div className="card-soft rounded-2xl p-6">
           {errors.form && <p className="text-sm text-red-300 mb-4">{errors.form}</p>}
           <button
             type="submit"
-            disabled={submitting || uploading}
+            disabled={submitting || uploading || (isPrivate && !disclaimerOk)}
             className="btn-gold w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Redirecting to PayFast…' : `Pay R${amount} & List My Property`}
           </button>
+          {isPrivate && !disclaimerOk && (
+            <p className="mt-3 text-xs text-gold-bright text-center">Tick the private-listing terms above to continue.</p>
+          )}
           <p className="mt-3 text-xs text-faint text-center">
             Payment is processed securely by PayFast. Your listing goes live within 48 hours of payment.
           </p>
@@ -343,6 +445,24 @@ export default function ListPropertyPage() {
         <a href="https://wa.me/27767959872" target="_blank" rel="noreferrer" className="text-teal-bright hover:text-white">+27 76 795 9872</a>
       </div>
     </div>
+  );
+}
+
+function SellerCard({ active, onClick, title, blurb }: { active: boolean; onClick: () => void; title: string; blurb: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-2xl p-5 transition-all ${
+        active ? 'bg-teal/15 border-2 border-teal' : 'card-soft border-2 border-transparent hover:border-white/20'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-teal bg-teal' : 'border-white/30'}`} />
+        <p className="font-display text-lg text-white">{title}</p>
+      </div>
+      <p className="mt-2 text-xs text-soft">{blurb}</p>
+    </button>
   );
 }
 

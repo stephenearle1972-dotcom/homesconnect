@@ -289,6 +289,17 @@ function Pricing() {
           All prices exclude 15% VAT. Contact us for custom packages.
         </p>
 
+        <div className="mt-8 card-soft rounded-2xl px-6 py-6 text-center">
+          <p className="font-display text-2xl text-white">Selling your own home?</p>
+          <p className="mt-2 text-soft text-sm max-w-xl mx-auto">
+            No agent, no commission. List your own property privately from R99 — same tiers,
+            same reach on the website and WhatsApp bot.
+          </p>
+          <Link to="/list-property?seller=private" className="btn-gold mt-5 inline-block">
+            List as a private seller
+          </Link>
+        </div>
+
         <div className="mt-12 card-soft rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 text-sm text-soft text-center">
           <span>Questions? WhatsApp us at</span>
           <a href="https://wa.me/27767959872" target="_blank" rel="noreferrer" className="text-teal-bright hover:text-white transition-colors font-semibold">

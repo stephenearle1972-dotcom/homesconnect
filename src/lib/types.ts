@@ -25,4 +25,8 @@ export type Listing = {
   agentAgency: string;
   featured: boolean;
   dateListed: string;
+  sellerType: 'agent' | 'private';
+  whatsapp: string;
+  sizeSqm: number;
+  address: string;
 };

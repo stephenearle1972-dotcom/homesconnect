@@ -31,8 +31,11 @@ export default function ListingDetailPage() {
     `Hi! I'm interested in ${listing.title} (${listing.id}) — ${listing.suburb}, ${listing.city}. Is it still available?`
   );
   const enquireWa = `https://wa.me/${WA_NUMBER}?text=${enquireMsg}`;
-  const agentWa = listing.agentPhone
-    ? `https://wa.me/${normalize(listing.agentPhone)}?text=${enquireMsg}`
+  const isPrivate = listing.sellerType === 'private';
+  // Prefer the dedicated WhatsApp number, fall back to the contact phone.
+  const directNumber = listing.whatsapp || listing.agentPhone;
+  const agentWa = directNumber
+    ? `https://wa.me/${normalize(directNumber)}?text=${enquireMsg}`
     : enquireWa;
 
   return (
@@ -93,25 +96,30 @@ export default function ListingDetailPage() {
 
         <aside className="lg:sticky lg:top-28 self-start space-y-4">
           <div className="card-soft rounded-2xl p-6">
-            <p className="text-xs uppercase tracking-[0.2em] text-faint">Listing agent</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-faint">{isPrivate ? 'Private seller' : 'Listing agent'}</p>
             {listing.agentName ? (
-              <Link to={`/agent/${toSlug(listing.agentName)}`} className="block mt-2 font-display text-xl text-white hover:text-teal-bright transition-colors">
-                {listing.agentName}
-              </Link>
+              isPrivate ? (
+                <p className="mt-2 font-display text-xl text-white">{listing.agentName}</p>
+              ) : (
+                <Link to={`/agent/${toSlug(listing.agentName)}`} className="block mt-2 font-display text-xl text-white hover:text-teal-bright transition-colors">
+                  {listing.agentName}
+                </Link>
+              )
             ) : (
               <p className="mt-2 font-display text-xl text-white">HomesConnect Agent</p>
             )}
             {listing.agentAgency && <p className="text-soft text-sm mt-1">{listing.agentAgency}</p>}
-            {listing.agentPhone && <p className="text-soft text-sm mt-1">{formatPhone(listing.agentPhone)}</p>}
+            {isPrivate && <p className="text-faint text-xs mt-1">Sold privately — no agent, no commission.</p>}
+            {directNumber && <p className="text-soft text-sm mt-1">{formatPhone(directNumber)}</p>}
             <a href={enquireWa} target="_blank" rel="noreferrer" className="btn-wa w-full mt-5">
               Enquire via WhatsApp
             </a>
-            {listing.agentPhone && (
+            {directNumber && (
               <a href={agentWa} target="_blank" rel="noreferrer" className="btn-ghost w-full mt-3">
-                WhatsApp the agent direct
+                {isPrivate ? 'WhatsApp the seller direct' : 'WhatsApp the agent direct'}
               </a>
             )}
-            {listing.agentName && (
+            {!isPrivate && listing.agentName && (
               <Link to={`/agent/${toSlug(listing.agentName)}`} className="block mt-3 text-center text-sm text-teal-bright hover:text-white transition-colors">
                 View all listings by this agent →
               </Link>

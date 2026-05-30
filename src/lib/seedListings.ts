@@ -16,8 +16,11 @@ const IMG = {
   cptMountain: T('property-06-cpt-mountain'),
 };
 
-function entry(p: Omit<Listing, 'status'> & Partial<Pick<Listing, 'status'>>): Listing {
-  return { status: 'active', ...p } as Listing;
+function entry(
+  p: Omit<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address'> &
+    Partial<Pick<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address'>>
+): Listing {
+  return { status: 'active', sellerType: 'agent', whatsapp: '', sizeSqm: 0, address: '', ...p };
 }
 
 export const SEED_LISTINGS: Listing[] = [

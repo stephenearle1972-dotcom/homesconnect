@@ -27,12 +27,15 @@ const CORS = {
 function bad(status, body) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function ok(body) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 
-// Header order in the sheet (must match the seeded header row).
+// Header order in the sheet (must match the header row, A..AF). The final 6
+// columns (AA..AF) were added for the private-seller path. Append is positional,
+// so this array order must mirror the sheet exactly.
 const SHEET_COLS = [
   'id','type','status','tier','title','price','price_display','bedrooms','bathrooms',
   'garage','garden','pool','pet_friendly','property_type','suburb','city','province',
   'description','imageUrl','image2','image3','agent_name','agent_phone','agent_agency',
   'featured','date_listed',
+  'seller_type','disclaimer_accepted','disclaimer_accepted_at','whatsapp','size_sqm','address',
 ];
 
 function formatRand(n) {
@@ -43,11 +46,13 @@ function formatRand(n) {
 function validate(input) {
   const errors = {};
   const req = (k, label) => { if (!String(input[k] ?? '').trim()) errors[k] = `${label} is required`; };
+  const isPrivate = input.seller_type === 'private';
 
-  req('agent_name', 'Agent name');
+  req('agent_name', isPrivate ? 'Full name' : 'Agent name');
   req('agent_phone', 'Phone number');
   req('agent_email', 'Email address');
-  req('fidelity_fund', 'Fidelity Fund Certificate number');
+  // Estate agents must supply a Fidelity Fund Certificate; private sellers don't have one.
+  if (!isPrivate) req('fidelity_fund', 'Fidelity Fund Certificate number');
   req('title', 'Property title');
   req('property_type', 'Property type');
   req('suburb', 'Suburb');
@@ -59,6 +64,10 @@ function validate(input) {
   if (!['basic', 'enhanced', 'agency'].includes(input.tier)) errors.tier = 'Choose a tier';
   if (!(Number(input.price) > 0)) errors.price = 'Price must be greater than 0';
   if (input.agent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.agent_email)) errors.agent_email = 'Enter a valid email';
+  // FSBO disclaimer is mandatory for private sellers (STEP 2).
+  if (isPrivate && input.disclaimer_accepted !== true) {
+    errors.disclaimer_accepted = 'You must accept the private-listing terms to continue';
+  }
 
   if (Array.isArray(input.images)) {
     for (const u of input.images) {
@@ -78,6 +87,12 @@ function buildRow({ id, input }) {
   const priceDisplay = input.type === 'rent'
     ? `${formatRand(priceNum)}/mo`
     : formatRand(priceNum);
+
+  const sellerType = input.seller_type === 'private' ? 'private' : 'agent';
+  const isPrivate = sellerType === 'private';
+  const phone = (input.agent_phone || '').trim();
+  const whatsapp = (input.whatsapp || '').trim() || phone; // default WhatsApp to the contact number
+  const disclaimerAccepted = isPrivate && input.disclaimer_accepted === true;
 
   const map = {
     id,
@@ -101,13 +116,21 @@ function buildRow({ id, input }) {
     imageUrl: images[0] || '',
     image2: images[1] || '',
     image3: images[2] || '',
+    // For private sellers, agent_* holds the seller's own details (no agency) so
+    // the listing card / detail page / bot all surface the right contact.
     agent_name: input.agent_name.trim(),
-    agent_phone: input.agent_phone.trim(),
-    agent_agency: (input.agent_agency || '').trim(),
+    agent_phone: phone,
+    agent_agency: isPrivate ? '' : (input.agent_agency || '').trim(),
     featured: 'no',
     date_listed: new Date().toISOString().slice(0, 10),
+    seller_type: sellerType,
+    disclaimer_accepted: disclaimerAccepted ? 'yes' : 'no',
+    disclaimer_accepted_at: disclaimerAccepted ? new Date().toISOString() : '',
+    whatsapp,
+    size_sqm: input.size ? String(Math.round(Number(input.size)) || '') : '',
+    address: (input.address || '').trim(),
   };
-  return SHEET_COLS.map((c) => map[c]);
+  return SHEET_COLS.map((c) => map[c] ?? '');
 }
 
 async function appendRow(row) {
@@ -126,10 +149,15 @@ function payfastEncode(v) {
     .replace(/\*/g, '%2A');
 }
 
+// PayFast signs the params in the ORDER THEY ARE SUBMITTED (their docs / official
+// PHP example iterate the array as-is — NOT alphabetically). The client posts the
+// hidden form fields in this object's insertion order, and PayFast recomputes the
+// signature from the order it receives, so we must sign in insertion order too.
+// (Sorting here was the original bug — it guaranteed a gateway signature mismatch.)
 function signPayfast(params, passphrase) {
-  const ordered = Object.keys(params).sort();
   const parts = [];
-  for (const k of ordered) {
+  for (const k of Object.keys(params)) {
+    if (k === 'signature') continue;
     const v = params[k];
     if (v === undefined || v === null || v === '') continue;
     parts.push(`${k}=${payfastEncode(v)}`);
