@@ -16,6 +16,19 @@ export const OTP_TAB = 'OtpChallenges';
 export const ADDON_AMOUNT = process.env.MAO_ADDON_AMOUNT || '299.00';
 export const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
 
+// Public gate (reversible): when MAO_PUBLIC_ENABLED === 'false', the public may NOT
+// enable/buy/use Make an Offer on a REAL listing. Demo listings (HCDEMO*, or any id
+// in MAO_DEMO_LISTINGS) stay fully functional so the journey can be demonstrated.
+// Default is enabled (true) unless the env var is explicitly the string 'false'.
+export const MAO_PUBLIC_ENABLED = process.env.MAO_PUBLIC_ENABLED !== 'false';
+export function isDemoListing(id) {
+  if (!id) return false;
+  if (/^HCDEMO/i.test(id)) return true;
+  return (process.env.MAO_DEMO_LISTINGS || '').split(',').map((s) => s.trim()).filter(Boolean).includes(id);
+}
+// Whether Make an Offer may operate for this listing right now.
+export function maoAllowed(listingId) { return MAO_PUBLIC_ENABLED || isDemoListing(listingId); }
+
 // ECTA supplier disclosure (shown at checkout + on the invoice). Physical address is
 // the owner-chosen "available on request" wording — replace the `address` line with
 // the exact registered street address when provided (one-line change).

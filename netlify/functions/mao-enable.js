@@ -5,7 +5,7 @@
 // without payment via scripts/enable-mao.mjs.)
 import crypto from 'node:crypto';
 import {
-  getListingById, getMaoListing, upsertMaoListing, genToken, nowIso, json, CORS, ADDON_AMOUNT, SITE_URL,
+  getListingById, getMaoListing, upsertMaoListing, genToken, nowIso, json, CORS, ADDON_AMOUNT, SITE_URL, maoAllowed,
 } from './_lib/mao.js';
 
 const PAYFAST_URL = 'https://www.payfast.co.za/eng/process';
@@ -39,6 +39,10 @@ export const handler = async (event) => {
   if (!found) return json(404, { error: 'Listing not found' });
   const listing = found.listing;
   if (listing.seller_type !== 'private') return json(400, { error: 'Make an Offer is only available on private (FSBO) listings.' });
+  // Public gate: refuse to enable/charge on a real listing while gated.
+  if (!maoAllowed(listing.id)) {
+    return json(403, { error: 'Make an Offer is not yet available to the public. It is coming soon — no payment can be taken at this time.' });
+  }
 
   // Required pre-enable gates (STEP 3 + legal review #1, #3, #5)
   const errors = {};

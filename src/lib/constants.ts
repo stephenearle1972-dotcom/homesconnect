@@ -42,6 +42,17 @@ export const ADDON = {
   conduct: 'HomesConnect does not act as your estate agent, negotiate on your behalf, recommend terms, hold deposits, or earn commission.',
 };
 
+// Public gate (reversible) — mirrors the server MAO_PUBLIC_ENABLED. When false, the
+// buyer button + seller enable path are hidden on REAL listings; demo listings
+// (HCDEMO*) stay fully functional. Default enabled unless explicitly 'false'.
+export const MAO_PUBLIC_ENABLED = import.meta.env.VITE_MAO_PUBLIC_ENABLED !== 'false';
+export function isDemoListing(id: string): boolean {
+  return /^HCDEMO/i.test(id || '');
+}
+export function maoAllowed(id: string): boolean {
+  return MAO_PUBLIC_ENABLED || isDemoListing(id);
+}
+
 // "Make an Offer" — language discipline (shown verbatim at every stage).
 export const NONBINDING_NOTICE =
   'This online process does not create a binding sale of immovable property. It records ' +

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import { loadConveyancers, type Conveyancer } from '../lib/conveyancers';
 import type { Listing } from '../lib/types';
-import { NONBINDING_NOTICE, FRAUD_NOTICE, COMPANY, ADDON } from '../lib/constants';
+import { NONBINDING_NOTICE, FRAUD_NOTICE, COMPANY, ADDON, maoAllowed } from '../lib/constants';
 
 const rand = (n: number) => 'R ' + (Number(n) || 0).toLocaleString('en-ZA');
 
@@ -47,9 +47,26 @@ export default function SellerPortalPage() {
   if (view === 'loading') return <Wrap><p className="text-soft">Loading…</p></Wrap>;
   if (view === 'invalid' || listing === null) return <Wrap><p className="font-display text-2xl text-white">This link is invalid or has expired.</p><Link to="/" className="text-teal-bright">← Home</Link></Wrap>;
 
+  // Public gate: the paid enable path is unavailable on real listings while gated.
+  if (view === 'enable' && !maoAllowed(listing!.id)) return <ComingSoonView listing={listing!} />;
   if (view === 'enable') return <EnableView listing={listing!} cancelled={enableCancelled} />;
   if (view === 'requestlink') return <RequestLinkView listing={listing!} />;
   return <Dashboard listing={listing!} token={token} data={data} justEnabled={justEnabled} onReload={async () => { const r = await fetch(`/.netlify/functions/mao-offers?listing=${encodeURIComponent(listingId)}&token=${encodeURIComponent(token)}`); if (r.ok) setData(await r.json()); }} err={err} setErr={setErr} />;
+}
+
+// ---------- Coming soon (public gate on; real listing) ----------
+function ComingSoonView({ listing }: { listing: Listing }) {
+  return (
+    <Wrap>
+      <p className="chip bg-white/5 text-gold-bright mb-4">Seller · Make an Offer</p>
+      <h1 className="font-display text-3xl md:text-5xl text-white">Make an Offer — coming soon</h1>
+      <Section title="Not yet available">
+        <p className="text-soft text-sm">The “Make an Offer” add-on is not yet open to the public. It will launch once available — there is nothing to pay and no action needed right now. Your listing continues to work as normal.</p>
+        <p className="mt-3 text-faint text-xs">{NONBINDING_NOTICE}</p>
+      </Section>
+      <BackLink listing={listing} />
+    </Wrap>
+  );
 }
 
 // ---------- Enable (paid add-on, ECTA-compliant checkout) ----------

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
-import { WA_NUMBER } from '../lib/constants';
+import { WA_NUMBER, maoAllowed } from '../lib/constants';
 import { toSlug } from '../lib/slug';
 
 export default function ListingDetailPage() {
@@ -125,7 +125,7 @@ export default function ListingDetailPage() {
               </Link>
             )}
           </div>
-          {isPrivate && listing.makeAnOfferEnabled && (
+          {isPrivate && listing.makeAnOfferEnabled && maoAllowed(listing.id) && (
             <div className="card-soft rounded-2xl p-6">
               <p className="text-xs uppercase tracking-[0.2em] text-faint">Buying privately?</p>
               <p className="mt-2 text-soft text-sm">Send the seller structured, non-binding proposed terms for discussion.</p>
@@ -137,7 +137,7 @@ export default function ListingDetailPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Listing ID</p>
             <p className="text-soft text-sm">{listing.id}</p>
           </div>
-          {isPrivate && (
+          {isPrivate && maoAllowed(listing.id) && (
             <div className="text-center">
               <Link to={`/seller?listing=${listing.id}`} className="text-xs text-faint hover:text-teal-bright">Are you the seller? Manage this listing →</Link>
             </div>

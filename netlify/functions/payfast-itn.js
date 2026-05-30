@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { getAllValues, updateCell } from './_lib/sheets.js';
 import { sendEmail } from './_lib/email.js';
-import { getMaoListing, COMPANY, ADDON, SITE_URL } from './_lib/mao.js';
+import { getMaoListing, COMPANY, ADDON, SITE_URL, maoAllowed } from './_lib/mao.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
@@ -114,6 +114,8 @@ async function emailInvoice(listingId, amountGross, pfPaymentId) {
 
 // "Make an Offer" add-on: verify the add-on amount, then set make_an_offer_enabled=true.
 async function enableMakeAnOffer(listingId, amountGross) {
+  // Public gate: never enable a real listing while gated (even on a valid ITN).
+  if (!maoAllowed(listingId)) throw new Error(`make_an_offer gated — not enabling ${listingId}`);
   const { tab, values: rows } = await getAllValues(SHEET_ID, 'A1:AZ5000');
   if (!rows.length) throw new Error('Sheet empty');
   const headers = rows[0];
