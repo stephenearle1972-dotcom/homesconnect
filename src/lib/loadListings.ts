@@ -47,6 +47,7 @@ function mapRow(row: Record<string, string>): Listing {
     whatsapp: row.whatsapp || '',
     sizeSqm: toInt(row.size_sqm),
     address: row.address || '',
+    makeAnOfferEnabled: toBool(row.make_an_offer_enabled),
   };
 }
 

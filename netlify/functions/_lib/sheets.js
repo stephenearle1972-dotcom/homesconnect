@@ -103,6 +103,21 @@ export async function getAllValues(sheetId, range = 'A1:Z2000') {
   return { tab, values: res.values || [] };
 }
 
+// Read a SPECIFIC named tab (getAllValues only reads the first tab).
+export async function getTabValues(sheetId, tab, range = 'A1:BZ5000') {
+  const res = await sheetsApi('GET', `/${sheetId}/values/${encodeURIComponent(tab + '!' + range)}`);
+  return res.values || [];
+}
+
+// Write a 2D values array to a full "Tab!A1:Z9" range in one call.
+export async function updateValues(sheetId, rangeWithTab, values2d) {
+  return sheetsApi(
+    'PUT',
+    `/${sheetId}/values/${encodeURIComponent(rangeWithTab)}?valueInputOption=RAW`,
+    { values: values2d }
+  );
+}
+
 export async function updateCell(sheetId, tab, a1Cell, value) {
   return sheetsApi(
     'PUT',

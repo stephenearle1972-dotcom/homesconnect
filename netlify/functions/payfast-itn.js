@@ -10,6 +10,8 @@ const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
 const PAYFAST_MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID;
 
 const TIER_AMOUNT = { basic: 99, enhanced: 249, agency: 999 };
+// "Make an Offer" add-on once-off fee (custom_str1 === 'mao_enable').
+const MAO_ADDON_AMOUNT = Math.round(Number(process.env.MAO_ADDON_AMOUNT || '299') || 299);
 
 // PayFast urlencode: spaces -> '+', not %20. See list-property.js for details.
 function payfastEncode(v) {
@@ -73,6 +75,28 @@ async function flipRowToActive(listingId, amountGross) {
   return { rowIdx, cellA1: `${tab}!${a1Cell}`, tier, paid };
 }
 
+// "Make an Offer" add-on: verify the add-on amount, then set make_an_offer_enabled=true.
+async function enableMakeAnOffer(listingId, amountGross) {
+  const { tab, values: rows } = await getAllValues(SHEET_ID, 'A1:AZ5000');
+  if (!rows.length) throw new Error('Sheet empty');
+  const headers = rows[0];
+  const idCol = headers.indexOf('id');
+  const enCol = headers.indexOf('make_an_offer_enabled');
+  const atCol = headers.indexOf('make_an_offer_enabled_at');
+  if (idCol === -1 || enCol === -1) throw new Error('Missing id/make_an_offer_enabled column');
+
+  let rowIdx = -1;
+  for (let i = 1; i < rows.length; i++) { if (rows[i][idCol] === listingId) { rowIdx = i; break; } }
+  if (rowIdx === -1) throw new Error(`Listing ${listingId} not found`);
+
+  const paid = Math.round(Number(amountGross) || 0);
+  if (paid !== MAO_ADDON_AMOUNT) throw new Error(`add-on amount mismatch for ${listingId}: expected R${MAO_ADDON_AMOUNT}, paid R${paid}`);
+
+  await updateCell(SHEET_ID, tab, `${colLetter(enCol)}${rowIdx + 1}`, 'true');
+  if (atCol !== -1) await updateCell(SHEET_ID, tab, `${colLetter(atCol)}${rowIdx + 1}`, new Date().toISOString());
+  return { paid };
+}
+
 function colLetter(idx) {
   let s = ''; let n = idx;
   do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
@@ -115,13 +139,20 @@ export const handler = async (event) => {
     return { statusCode: 200, body: 'OK' };
   }
 
-  // 4. Verify amount matches the tier, then flip row to active in the sheet
+  // 4. Apply the payment. Two payment types share this ITN:
+  //    - custom_str1='mao_enable' → enable the Make an Offer add-on on the listing
+  //    - otherwise → activate a newly-paid listing (verify amount matches the tier)
   try {
-    const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
-    console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');
+    if (map.custom_str1 === 'mao_enable') {
+      const r = await enableMakeAnOffer(map.m_payment_id, map.amount_gross);
+      console.log('[payfast-itn] make_an_offer enabled', map.m_payment_id, `paid=R${r.paid}`, 'in', (Date.now() - t0) + 'ms');
+    } else {
+      const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
+      console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');
+    }
   } catch (err) {
-    console.error('[payfast-itn] not activated:', err.message);
-    // Still 200 — PayFast retries on non-200 and re-flipping is idempotent anyway.
+    console.error('[payfast-itn] not applied:', err.message);
+    // Still 200 — PayFast retries on non-200 and re-applying is idempotent anyway.
   }
 
   return { statusCode: 200, body: 'OK' };

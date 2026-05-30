@@ -125,10 +125,23 @@ export default function ListingDetailPage() {
               </Link>
             )}
           </div>
+          {isPrivate && listing.makeAnOfferEnabled && (
+            <div className="card-soft rounded-2xl p-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-faint">Buying privately?</p>
+              <p className="mt-2 text-soft text-sm">Send the seller structured, non-binding proposed terms for discussion.</p>
+              <Link to={`/make-offer?listing=${listing.id}`} className="btn-gold w-full mt-4">Make an Offer</Link>
+              <p className="mt-2 text-[11px] text-faint">This does not create a binding sale — it records proposed terms only.</p>
+            </div>
+          )}
           <div className="card-soft rounded-2xl p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Listing ID</p>
             <p className="text-soft text-sm">{listing.id}</p>
           </div>
+          {isPrivate && (
+            <div className="text-center">
+              <Link to={`/seller?listing=${listing.id}`} className="text-xs text-faint hover:text-teal-bright">Are you the seller? Manage this listing →</Link>
+            </div>
+          )}
         </aside>
       </div>
     </div>

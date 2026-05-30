@@ -29,4 +29,5 @@ export type Listing = {
   whatsapp: string;
   sizeSqm: number;
   address: string;
+  makeAnOfferEnabled: boolean;
 };

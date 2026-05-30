@@ -11,6 +11,10 @@ import ListPropertyPage from './pages/ListPropertyPage';
 import ListingSuccessPage from './pages/ListingSuccessPage';
 import ConveyancersPage from './pages/ConveyancersPage';
 import ListConveyancerPage from './pages/ListConveyancerPage';
+import MakeOfferPage from './pages/MakeOfferPage';
+import SellerPortalPage from './pages/SellerPortalPage';
+import BuyerConsentPage from './pages/BuyerConsentPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 export default function App() {
   return (
@@ -27,6 +31,10 @@ export default function App() {
           <Route path="/listing-success" element={<ListingSuccessPage />} />
           <Route path="/conveyancers" element={<ConveyancersPage />} />
           <Route path="/list-conveyancer" element={<ListConveyancerPage />} />
+          <Route path="/make-offer" element={<MakeOfferPage />} />
+          <Route path="/seller" element={<SellerPortalPage />} />
+          <Route path="/offer-consent" element={<BuyerConsentPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
         </Routes>
       </main>
       <Footer />
