@@ -4,6 +4,12 @@ import crypto from 'node:crypto';
 import { getTabValues, appendRowToTab, updateValues } from './sheets.js';
 
 export const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
+// PRIVATE store for Offers / OtpChallenges / MaoListings (buyer PII, tokens, OTP).
+// MUST be a SEPARATE spreadsheet that is NOT link-shared/published — otherwise its
+// tabs are downloadable via /export (the main workbook is link-shared so the public
+// listings CSV works). Falls back to the main sheet only if unset (NOT POPIA-safe —
+// set HOMESCONNECT_PRIVATE_SHEET_ID to a restricted sheet for production use).
+export const PRIVATE_SHEET_ID = process.env.HOMESCONNECT_PRIVATE_SHEET_ID || process.env.HOMESCONNECT_SHEET_ID;
 export const LISTINGS_TAB = 'HomesConnect Listings';
 export const OFFERS_TAB = 'Offers';
 export const OTP_TAB = 'OtpChallenges';
@@ -71,7 +77,7 @@ export const MAO_LISTINGS_TAB = 'MaoListings';
 const MAO_LISTINGS_COLS = ['listing_id', 'seller_name', 'seller_email', 'token', 'disclosure_json', 'created_at', 'updated_at'];
 
 export async function getMaoListing(listingId) {
-  const values = await getTabValues(SHEET_ID, MAO_LISTINGS_TAB);
+  const values = await getTabValues(PRIVATE_SHEET_ID, MAO_LISTINGS_TAB);
   const { list } = toObjects(values, MAO_LISTINGS_COLS);
   return list.find((r) => r.listing_id === listingId) || null;
 }
@@ -80,11 +86,11 @@ export async function upsertMaoListing(listingId, fields) {
   if (existing) {
     const merged = { ...existing, ...fields, listing_id: listingId, updated_at: nowIso() };
     const last = colLetter(MAO_LISTINGS_COLS.length - 1);
-    await updateValues(SHEET_ID, `${MAO_LISTINGS_TAB}!A${existing._row}:${last}${existing._row}`, [MAO_LISTINGS_COLS.map((c) => (merged[c] != null ? merged[c] : ''))]);
+    await updateValues(PRIVATE_SHEET_ID, `${MAO_LISTINGS_TAB}!A${existing._row}:${last}${existing._row}`, [MAO_LISTINGS_COLS.map((c) => (merged[c] != null ? merged[c] : ''))]);
     return merged;
   }
   const obj = { listing_id: listingId, seller_name: '', seller_email: '', token: '', disclosure_json: '', created_at: nowIso(), updated_at: nowIso(), ...fields };
-  await appendRowToTab(SHEET_ID, MAO_LISTINGS_TAB, MAO_LISTINGS_COLS.map((c) => (obj[c] != null ? obj[c] : '')));
+  await appendRowToTab(PRIVATE_SHEET_ID, MAO_LISTINGS_TAB, MAO_LISTINGS_COLS.map((c) => (obj[c] != null ? obj[c] : '')));
   return obj;
 }
 
@@ -92,37 +98,37 @@ export async function upsertMaoListing(listingId, fields) {
 export function offerToRow(obj) { return OFFERS_COLS.map((c) => (obj[c] != null ? obj[c] : '')); }
 
 export async function getOffersForListing(listingId) {
-  const values = await getTabValues(SHEET_ID, OFFERS_TAB);
+  const values = await getTabValues(PRIVATE_SHEET_ID, OFFERS_TAB);
   const { list } = toObjects(values, OFFERS_COLS);
   return list.filter((o) => o.listing_id === listingId);
 }
 export async function getOfferById(id) {
-  const values = await getTabValues(SHEET_ID, OFFERS_TAB);
+  const values = await getTabValues(PRIVATE_SHEET_ID, OFFERS_TAB);
   const { list } = toObjects(values, OFFERS_COLS);
   return list.find((o) => o.id === id) || null;
 }
-export async function appendOffer(obj) { return appendRowToTab(SHEET_ID, OFFERS_TAB, offerToRow(obj)); }
+export async function appendOffer(obj) { return appendRowToTab(PRIVATE_SHEET_ID, OFFERS_TAB, offerToRow(obj)); }
 
 // Rewrite an offer's whole row from an object (must include _row).
 export async function saveOffer(obj) {
   const last = colLetter(OFFERS_COLS.length - 1);
-  await updateValues(SHEET_ID, `${OFFERS_TAB}!A${obj._row}:${last}${obj._row}`, [offerToRow(obj)]);
+  await updateValues(PRIVATE_SHEET_ID, `${OFFERS_TAB}!A${obj._row}:${last}${obj._row}`, [offerToRow(obj)]);
 }
 
 // ---------- OTP ----------
 export async function createOtp({ phone, email, codeHash, expiresAt, verifyToken }) {
   const id = genId('OTP');
-  await appendRowToTab(SHEET_ID, OTP_TAB, [id, phone, email, codeHash, expiresAt, '0', 'no', verifyToken, nowIso()]);
+  await appendRowToTab(PRIVATE_SHEET_ID, OTP_TAB, [id, phone, email, codeHash, expiresAt, '0', 'no', verifyToken, nowIso()]);
   return id;
 }
 export async function getOtpById(id) {
-  const values = await getTabValues(SHEET_ID, OTP_TAB);
+  const values = await getTabValues(PRIVATE_SHEET_ID, OTP_TAB);
   const { list } = toObjects(values, OTP_COLS);
   return list.find((o) => o.id === id) || null;
 }
 export async function saveOtp(obj) {
   const last = colLetter(OTP_COLS.length - 1);
-  await updateValues(SHEET_ID, `${OTP_TAB}!A${obj._row}:${last}${obj._row}`, [OTP_COLS.map((c) => (obj[c] != null ? obj[c] : ''))]);
+  await updateValues(PRIVATE_SHEET_ID, `${OTP_TAB}!A${obj._row}:${last}${obj._row}`, [OTP_COLS.map((c) => (obj[c] != null ? obj[c] : ''))]);
 }
 
 // ---------- helpers ----------
