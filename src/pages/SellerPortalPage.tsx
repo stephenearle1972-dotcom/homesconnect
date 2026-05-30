@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import { loadConveyancers, type Conveyancer } from '../lib/conveyancers';
 import type { Listing } from '../lib/types';
-import { NONBINDING_NOTICE, FRAUD_NOTICE } from '../lib/constants';
+import { NONBINDING_NOTICE, FRAUD_NOTICE, COMPANY, ADDON } from '../lib/constants';
 
 const rand = (n: number) => 'R ' + (Number(n) || 0).toLocaleString('en-ZA');
 
@@ -52,53 +52,106 @@ export default function SellerPortalPage() {
   return <Dashboard listing={listing!} token={token} data={data} justEnabled={justEnabled} onReload={async () => { const r = await fetch(`/.netlify/functions/mao-offers?listing=${encodeURIComponent(listingId)}&token=${encodeURIComponent(token)}`); if (r.ok) setData(await r.json()); }} err={err} setErr={setErr} />;
 }
 
-// ---------- Enable (paid add-on) ----------
+// ---------- Enable (paid add-on, ECTA-compliant checkout) ----------
 function EnableView({ listing, cancelled }: { listing: Listing; cancelled: boolean }) {
+  const [estage, setEstage] = useState<'form' | 'review'>('form');
   const [f, setF] = useState({ seller_name: listing.agentName || '', seller_email: '', cond_occupancy: '', cond_known_defects: '', cond_additions_approved: '', cond_notes: '' });
-  const [acks, setAcks] = useState({ authority: false, nonbinding: false, nominate_later: false });
+  const [acks, setAcks] = useState({ authority: false, nonbinding: false, nominate_later: false, owner_or_authorised: false, mandate_disclosed: false, disclosure_complete: false });
+  const [immediate, setImmediate] = useState(false);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
-  const ready = acks.authority && acks.nonbinding && acks.nominate_later && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.seller_email);
-  async function go() {
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.seller_email);
+  const declarationsOk = acks.authority && acks.nonbinding && acks.nominate_later && acks.owner_or_authorised && acks.mandate_disclosed && acks.disclosure_complete;
+  const formReady = emailOk && declarationsOk;
+
+  async function placeOrder() {
     setBusy(true); setErr('');
-    const { ok, data } = await api('mao-enable', { listing_id: listing.id, ...f, confirm_authority: acks.authority, ack_nonbinding: acks.nonbinding, ack_nominate_later: acks.nominate_later });
+    const { ok, data } = await api('mao-enable', {
+      listing_id: listing.id, ...f,
+      confirm_authority: acks.authority, ack_nonbinding: acks.nonbinding, ack_nominate_later: acks.nominate_later,
+      decl_owner_or_authorised: acks.owner_or_authorised, decl_mandate_disclosed: acks.mandate_disclosed,
+      decl_disclosure_complete: acks.disclosure_complete, consent_immediate_activation: immediate,
+    });
     setBusy(false);
     if (!ok) { setErr(data.error || 'Could not start checkout'); return; }
     payfastRedirect(data.payfast_url, data.params);
   }
+
   return (
     <Wrap>
       <p className="chip bg-white/5 text-gold-bright mb-4">Seller · Make an Offer add-on</p>
       <h1 className="font-display text-3xl md:text-5xl text-white">Enable “Make an Offer” for {listing.title}</h1>
       <div className="mt-4 rounded-2xl border border-gold/30 bg-gold/5 p-4 text-soft text-sm">{NONBINDING_NOTICE}</div>
-      {cancelled && <div className="mt-4 rounded-2xl border border-gold/40 bg-gold/10 p-4 text-soft text-sm">Checkout was cancelled — your details are saved. Tick the boxes and try again.</div>}
+      {cancelled && <div className="mt-4 rounded-2xl border border-gold/40 bg-gold/10 p-4 text-soft text-sm">Checkout was cancelled — your details are saved. Review and try again.</div>}
 
-      <Section title="What you get (once-off R299)">
-        <ul className="text-soft text-sm space-y-1">
-          <li>✓ Buyers can send structured, non-binding proposed terms on this listing</li>
-          <li>✓ A private dashboard to review and compare all proposals</li>
-          <li>✓ Neutral handoff to a conveyancer of your choice when you're ready</li>
-        </ul>
-        <p className="mt-3 text-faint text-xs leading-relaxed">Excluded: legal advice, conveyancing/attorney fees, valuation, bond approval. HomesConnect never creates a binding sale and never handles deposits — only this add-on fee is paid to TownConnect. You can stop accepting proposals at any time.</p>
+      {/* ECTA supplier + product disclosures (always visible) */}
+      <Section title="About this purchase">
+        <p className="text-soft text-sm"><strong className="text-white">{COMPANY.name}</strong> · Reg {COMPANY.reg}</p>
+        <p className="text-faint text-xs mt-1">{COMPANY.address}</p>
+        <p className="text-faint text-xs">Tel {COMPANY.phone} · {COMPANY.email} · {COMPANY.website}</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Product</p>
+            <p className="text-soft text-sm">{ADDON.name} — <strong className="text-white">{ADDON.price}</strong> once-off (paid via PayFast card/EFT).</p>
+            <p className="text-faint text-xs mt-1">{ADDON.duration}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-faint mt-3 mb-1">Included</p>
+            <ul className="text-soft text-xs space-y-0.5">{ADDON.includes.map((x) => <li key={x}>✓ {x}</li>)}</ul>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Explicitly excluded</p>
+            <ul className="text-soft text-xs space-y-0.5">{ADDON.excludes.map((x) => <li key={x}>· {x}</li>)}</ul>
+            <p className="text-xs uppercase tracking-[0.2em] text-faint mt-3 mb-1">Refunds</p>
+            <p className="text-faint text-xs">{ADDON.refund}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-faint text-xs">{ADDON.privacy}</p>
+        <p className="mt-2 text-faint text-xs">Transaction record: an invoice is emailed to you on activation; your proposals and record are always available via your private seller link.</p>
+        <p className="mt-3 text-soft text-xs border-t border-white/10 pt-3">{ADDON.conduct}</p>
       </Section>
 
-      <Section title="Confirm & disclose">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Your name"><input className="input" value={f.seller_name} onChange={(e) => setF({ ...f, seller_name: e.target.value })} /></Field>
-          <Field label="Email for proposal notifications"><input className="input" type="email" value={f.seller_email} onChange={(e) => setF({ ...f, seller_email: e.target.value })} /></Field>
-          <Field label="Current occupancy" hint="e.g. owner-occupied / tenanted" className="md:col-span-2"><input className="input" value={f.cond_occupancy} onChange={(e) => setF({ ...f, cond_occupancy: e.target.value })} /></Field>
-          <Field label="Known defects" hint="brief" className="md:col-span-2"><textarea className="input resize-none" rows={2} value={f.cond_known_defects} onChange={(e) => setF({ ...f, cond_known_defects: e.target.value })} /></Field>
-          <Field label="Additions/alterations approved?" className="md:col-span-2"><input className="input" value={f.cond_additions_approved} onChange={(e) => setF({ ...f, cond_additions_approved: e.target.value })} /></Field>
-          <Field label="Other disclosure notes" hint="optional" className="md:col-span-2"><textarea className="input resize-none" rows={2} value={f.cond_notes} onChange={(e) => setF({ ...f, cond_notes: e.target.value })} /></Field>
-        </div>
-        <div className="mt-5 space-y-3">
-          <Check checked={acks.authority} onChange={(v) => setAcks({ ...acks, authority: v })}>I confirm I am entitled to sell this property.</Check>
-          <Check checked={acks.nonbinding} onChange={(v) => setAcks({ ...acks, nonbinding: v })}>I acknowledge that no online action creates a binding sale.</Check>
-          <Check checked={acks.nominate_later} onChange={(v) => setAcks({ ...acks, nominate_later: v })}>I acknowledge I will nominate a conveyancer later, if I choose to proceed.</Check>
-        </div>
-        {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
-        <button className="btn-gold mt-6 disabled:opacity-50" disabled={!ready || busy} onClick={go}>{busy ? 'Redirecting to PayFast…' : 'Pay R299 & enable'}</button>
-        {!ready && <p className="mt-2 text-xs text-gold-bright">Complete the email and tick all three confirmations to continue.</p>}
-      </Section>
+      {estage === 'form' && (<>
+        <Section title="Your details & property-condition disclosure">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Your name"><input className="input" value={f.seller_name} onChange={(e) => setF({ ...f, seller_name: e.target.value })} /></Field>
+            <Field label="Email for proposal notifications"><input className="input" type="email" value={f.seller_email} onChange={(e) => setF({ ...f, seller_email: e.target.value })} /></Field>
+            <Field label="Current occupancy" hint="e.g. owner-occupied / tenanted" className="md:col-span-2"><input className="input" value={f.cond_occupancy} onChange={(e) => setF({ ...f, cond_occupancy: e.target.value })} /></Field>
+            <Field label="Known defects" hint="brief" className="md:col-span-2"><textarea className="input resize-none" rows={2} value={f.cond_known_defects} onChange={(e) => setF({ ...f, cond_known_defects: e.target.value })} /></Field>
+            <Field label="Additions/alterations approved?" className="md:col-span-2"><input className="input" value={f.cond_additions_approved} onChange={(e) => setF({ ...f, cond_additions_approved: e.target.value })} /></Field>
+            <Field label="Other disclosure notes" hint="optional" className="md:col-span-2"><textarea className="input resize-none" rows={2} value={f.cond_notes} onChange={(e) => setF({ ...f, cond_notes: e.target.value })} /></Field>
+          </div>
+          <p className="text-faint text-xs mt-2">This disclosure record will be shown to buyers who submit proposed terms.</p>
+          <div className="mt-5 space-y-3">
+            <Check checked={acks.owner_or_authorised} onChange={(v) => setAcks({ ...acks, owner_or_authorised: v })}>I am the registered owner of the property or am duly authorised to act on behalf of the owner.</Check>
+            <Check checked={acks.mandate_disclosed} onChange={(v) => setAcks({ ...acks, mandate_disclosed: v })}>I have disclosed whether the property is subject to an estate-agent mandate, sole mandate, option, right of first refusal, existing agreement of sale, or other restriction affecting marketing or sale.</Check>
+            <Check checked={acks.disclosure_complete} onChange={(v) => setAcks({ ...acks, disclosure_complete: v })}>I confirm that the property-condition disclosure record is complete to the best of my knowledge and may be provided to prospective buyers who submit proposed terms.</Check>
+            <Check checked={acks.authority} onChange={(v) => setAcks({ ...acks, authority: v })}>I confirm I am entitled to sell this property.</Check>
+            <Check checked={acks.nonbinding} onChange={(v) => setAcks({ ...acks, nonbinding: v })}>I acknowledge that no online action creates a binding sale.</Check>
+            <Check checked={acks.nominate_later} onChange={(v) => setAcks({ ...acks, nominate_later: v })}>I acknowledge I will nominate a conveyancer later, if I choose to proceed.</Check>
+          </div>
+          <button className="btn-gold mt-6 disabled:opacity-50" disabled={!formReady} onClick={() => { setErr(''); setEstage('review'); }}>Review order</button>
+          {!formReady && <p className="mt-2 text-xs text-gold-bright">Enter your email and tick all confirmations to review your order.</p>}
+        </Section>
+      </>)}
+
+      {estage === 'review' && (
+        <Section title="Review your order">
+          <ul className="text-soft text-sm space-y-1">
+            <li>Product: <strong className="text-white">{ADDON.name}</strong> — {ADDON.price} once-off</li>
+            <li>Listing: {listing.title} ({listing.id})</li>
+            <li>Notifications to: {f.seller_email}</li>
+            <li>Disclosure: occupancy “{f.cond_occupancy || '—'}”, defects “{f.cond_known_defects || '—'}”, additions “{f.cond_additions_approved || '—'}”</li>
+          </ul>
+          <div className="mt-5 rounded-xl border border-gold/30 bg-gold/5 p-4">
+            <Check checked={immediate} onChange={setImmediate}>I request immediate activation of the Make an Offer add-on and consent to HomesConnect beginning the service immediately. I understand the statutory cooling-off position may be affected once performance begins.</Check>
+          </div>
+          {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button className="btn-ghost" onClick={() => setEstage('form')}>← Edit / correct</button>
+            <button className="btn-gold disabled:opacity-50" disabled={busy || !immediate} onClick={placeOrder}>{busy ? 'Redirecting to PayFast…' : `Place order — pay ${ADDON.price}`}</button>
+            <Link to={`/listing/${listing.id}`} className="text-sm text-faint hover:text-white self-center">Cancel</Link>
+          </div>
+          {!immediate && <p className="mt-2 text-xs text-gold-bright">Tick the immediate-activation consent to place your order.</p>}
+        </Section>
+      )}
       <BackLink listing={listing} />
     </Wrap>
   );
@@ -156,9 +209,11 @@ function statusLabel(s: string) {
 }
 
 function OfferCard({ o, listing, token, active, onOpen, onReload, setErr }: any) {
-  const [panel, setPanel] = useState<'' | 'clarification' | 'revision' | 'proceed'>('');
+  const [panel, setPanel] = useState<'' | 'clarification' | 'revision' | 'proceed' | 'private_note'>('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // Seller-only private notes (never emailed to the buyer, never sent to AI).
+  const privateNotes = (o.action_log || []).filter((e: any) => e.event === 'private_note' && e.note);
   async function act(action: string, extra: any = {}) {
     setBusy(true); setErr('');
     const { ok, data } = await api('mao-seller-action', { listing_id: listing.id, token, offer_id: o.id, action, note, ...extra });
@@ -183,24 +238,39 @@ function OfferCard({ o, listing, token, active, onOpen, onReload, setErr }: any)
         <li>Valid until: {o.proposal_expiry}</li>
         <li>Contact: {o.buyer_phone} · {o.buyer_email}</li>
         {o.note_to_seller && <li className="text-faint">Note: “{o.note_to_seller}”</li>}
-        {o.selected_conveyancer && <li className="text-teal-bright">Conveyancer: {o.selected_conveyancer.mode === 'later' ? 'to be decided' : `${o.selected_conveyancer.name} (${o.selected_conveyancer.email})`}{o.consent_share_conveyancer ? ' · buyer consented' : ' · awaiting buyer consent'}</li>}
+        {o.selected_conveyancer && <li className="text-teal-bright">Conveyancer (selected by seller): {o.selected_conveyancer.mode === 'later' ? 'to be decided' : `${o.selected_conveyancer.name} (${o.selected_conveyancer.email})`}{o.consent_share_conveyancer ? ' · buyer consented' : ' · awaiting buyer consent'}</li>}
       </ul>
 
-      {o.status !== 'declined' && o.status !== 'proceeding_to_otp' && (
-        <div className="mt-4 flex flex-wrap gap-2">
+      {privateNotes.length > 0 && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-faint mb-1">Your private notes (seller-only)</p>
+          {privateNotes.map((e: any, i: number) => <p key={i} className="text-xs text-soft">• {e.note}</p>)}
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {o.status !== 'declined' && o.status !== 'proceeding_to_otp' && (<>
           <button className="btn-ghost text-xs py-1.5 px-3" onClick={() => { onOpen(); setPanel('clarification'); }}>Request clarification</button>
-          <button className="btn-ghost text-xs py-1.5 px-3" onClick={() => { onOpen(); setPanel('revision'); }}>Invite revised terms</button>
+          <button className="btn-ghost text-xs py-1.5 px-3" onClick={() => { onOpen(); setPanel('revision'); }}>Invite revised proposed terms</button>
           <button className="btn-gold text-xs py-1.5 px-3" onClick={() => { onOpen(); setPanel('proceed'); }}>Proceed to formal OTP</button>
           <button className="btn-ghost text-xs py-1.5 px-3" onClick={() => act('decline')}>Decline</button>
           <button className="text-xs py-1.5 px-3 text-faint hover:text-white" onClick={() => act('archive')}>Archive</button>
-        </div>
-      )}
+        </>)}
+        <button className="text-xs py-1.5 px-3 text-faint hover:text-white" onClick={() => { onOpen(); setPanel('private_note'); }}>Add private note</button>
+      </div>
 
       {active && panel === 'clarification' && (
         <Panel><textarea className="input resize-none" rows={2} placeholder="What would you like the buyer to clarify?" value={note} onChange={(e) => setNote(e.target.value)} /><button className="btn-gold mt-3 text-sm" disabled={busy || !note.trim()} onClick={() => act('clarification')}>Send request</button></Panel>
       )}
       {active && panel === 'revision' && (
-        <Panel><textarea className="input resize-none" rows={2} placeholder="Optional note inviting revised terms" value={note} onChange={(e) => setNote(e.target.value)} /><button className="btn-gold mt-3 text-sm" disabled={busy} onClick={() => act('revision')}>Invite revised terms</button></Panel>
+        <Panel><textarea className="input resize-none" rows={2} placeholder="Optional note inviting revised proposed terms" value={note} onChange={(e) => setNote(e.target.value)} /><button className="btn-gold mt-3 text-sm" disabled={busy} onClick={() => act('revision')}>Invite revised proposed terms</button></Panel>
+      )}
+      {active && panel === 'private_note' && (
+        <Panel>
+          <p className="text-xs text-gold-bright mb-2">Use private notes only for objective, transaction-related information. Do not record special personal information, discriminatory comments, or unsupported assumptions.</p>
+          <textarea className="input resize-none" rows={2} placeholder="Seller-only note (never shared with the buyer)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <button className="btn-gold mt-3 text-sm" disabled={busy || !note.trim()} onClick={() => act('private_note')}>Save private note</button>
+        </Panel>
       )}
       {active && panel === 'proceed' && <ProceedPanel busy={busy} act={act} />}
     </article>

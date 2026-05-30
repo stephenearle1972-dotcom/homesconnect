@@ -16,6 +16,35 @@ export const OTP_TAB = 'OtpChallenges';
 export const ADDON_AMOUNT = process.env.MAO_ADDON_AMOUNT || '299.00';
 export const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
 
+// ECTA supplier disclosure (shown at checkout + on the invoice). Physical address is
+// the owner-chosen "available on request" wording — replace the `address` line with
+// the exact registered street address when provided (one-line change).
+export const COMPANY = {
+  name: 'TownConnect (Pty) Ltd t/a HomesConnect',
+  reg: '2026/106250/07',
+  address: 'Registered office — full physical address available on request to hello@townconnect.co.za',
+  phone: '+27 68 898 6081',
+  email: 'hello@townconnect.co.za',
+  website: 'https://homesconnect-za.netlify.app',
+};
+export const ADDON = {
+  name: 'Make an Offer add-on',
+  price: ADDON_AMOUNT,
+  includes: [
+    'Buyers can send structured, non-binding proposed terms on this listing',
+    'A private dashboard to review and compare all proposals',
+    'A neutral handoff to a conveyancer of your choice when you are ready',
+  ],
+  excludes: [
+    'No legal advice', 'No conveyancing or attorney services', 'No property valuation',
+    'No bond/finance approval', 'No payment of attorney/conveyancing fees',
+    'HomesConnect never creates a binding sale and never holds deposits',
+  ],
+  duration: 'Active for as long as your listing remains active. Once-off fee — no recurring billing.',
+  refund: 'Because the service is activated and performance begins immediately on your request, the fee is non-refundable once activated. If activation fails (e.g. payment captured but the add-on is not enabled), the fee is refunded in full.',
+  privacy: 'Buyer proposals are stored privately and accessed only via authenticated processes — never published. See the privacy notice. We never send banking details.',
+};
+
 // Language discipline (STEP 2) — shown verbatim at every stage.
 export const NONBINDING_NOTICE =
   'This online process does not create a binding sale of immovable property. It records ' +

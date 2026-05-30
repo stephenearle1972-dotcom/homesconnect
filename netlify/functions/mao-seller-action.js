@@ -36,8 +36,10 @@ export const handler = async (event) => {
   const log = parseActionLog(offer.seller_action_log);
   const note = String(b.note || '').trim();
 
-  // Archive / unarchive are UI-only markers; status unchanged.
-  if (action === 'archive' || action === 'unarchive') {
+  // Archive / unarchive / private_note are seller-only; status unchanged and NEVER
+  // emailed to the buyer. Private notes are visible only in the tokenised seller view
+  // and are never sent to the AI.
+  if (action === 'archive' || action === 'unarchive' || action === 'private_note') {
     log.push({ t: nowIso(), actor: 'seller', event: action, note });
     offer.seller_action_log = JSON.stringify(log);
     offer.updated_at = nowIso();

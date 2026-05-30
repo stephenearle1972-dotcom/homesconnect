@@ -40,11 +40,18 @@ export const handler = async (event) => {
   const listing = found.listing;
   if (listing.seller_type !== 'private') return json(400, { error: 'Make an Offer is only available on private (FSBO) listings.' });
 
-  // Required pre-enable gates (STEP 3)
+  // Required pre-enable gates (STEP 3 + legal review #1, #3, #5)
   const errors = {};
   if (b.confirm_authority !== true) errors.confirm_authority = 'Confirm you are entitled to sell this property';
   if (b.ack_nonbinding !== true) errors.ack_nonbinding = 'Acknowledge that no online action creates a binding sale';
   if (b.ack_nominate_later !== true) errors.ack_nominate_later = 'Acknowledge you will nominate a conveyancer later';
+  // #3 authority / mandate declarations
+  if (b.decl_owner_or_authorised !== true) errors.decl_owner_or_authorised = 'Confirm you are the owner or duly authorised';
+  if (b.decl_mandate_disclosed !== true) errors.decl_mandate_disclosed = 'Confirm you have disclosed any mandate/restriction';
+  // #1 disclosure completeness declaration
+  if (b.decl_disclosure_complete !== true) errors.decl_disclosure_complete = 'Confirm the disclosure record is complete and may be shared with buyers';
+  // #5 immediate-activation consent (ECTA)
+  if (b.consent_immediate_activation !== true) errors.consent_immediate_activation = 'Consent to immediate activation is required to begin the service';
   const sellerEmail = String(b.seller_email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sellerEmail)) errors.seller_email = 'Enter a valid email for proposal notifications';
   if (Object.keys(errors).length) return json(400, { error: 'Please complete the required items', errors });
@@ -63,6 +70,14 @@ export const handler = async (event) => {
       notes: String(b.cond_notes || '').trim(),
     },
     acks: { authority: true, nonbinding: true, nominate_later: true },
+    // Legal-review declarations, each accepted at this timestamp.
+    declarations: {
+      owner_or_authorised: true,
+      mandate_disclosed: true,
+      disclosure_complete: true,
+      immediate_activation: true,
+      at: nowIso(),
+    },
     at: nowIso(),
   };
   try {

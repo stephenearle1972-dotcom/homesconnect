@@ -4,6 +4,8 @@
 
 import crypto from 'node:crypto';
 import { getAllValues, updateCell } from './_lib/sheets.js';
+import { sendEmail } from './_lib/email.js';
+import { getMaoListing, COMPANY, ADDON, SITE_URL } from './_lib/mao.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
@@ -73,6 +75,41 @@ async function flipRowToActive(listingId, amountGross) {
   const a1Cell = `${colLetter(statusCol)}${rowIdx + 1}`;
   await updateCell(SHEET_ID, tab, a1Cell, 'active');
   return { rowIdx, cellA1: `${tab}!${a1Cell}`, tier, paid };
+}
+
+// ECTA transaction record: email the seller a tax-invoice-style record of the add-on.
+async function emailInvoice(listingId, amountGross, pfPaymentId) {
+  const mao = await getMaoListing(listingId);
+  const to = mao && mao.seller_email;
+  if (!to) return;
+  const amt = Number(amountGross) || 0;
+  const ex = (amt / 1.15);
+  const vat = amt - ex;
+  const invNo = `HC-MAO-${listingId}-${pfPaymentId || ''}`.slice(0, 40);
+  const lines = [
+    `${COMPANY.name}`,
+    `Company reg: ${COMPANY.reg}`,
+    `${COMPANY.address}`,
+    `Tel: ${COMPANY.phone}  ·  ${COMPANY.email}  ·  ${COMPANY.website}`,
+    ``,
+    `INVOICE / TRANSACTION RECORD`,
+    `Invoice no: ${invNo}`,
+    `PayFast payment id: ${pfPaymentId || '-'}`,
+    ``,
+    `Item: ${ADDON.name} — listing ${listingId}`,
+    `Amount (incl. VAT): R ${amt.toFixed(2)}`,
+    `  VAT (15%, if applicable): R ${vat.toFixed(2)}`,
+    `  Excl. VAT: R ${ex.toFixed(2)}`,
+    `Duration: ${ADDON.duration}`,
+    ``,
+    `Included: ${ADDON.includes.join('; ')}.`,
+    `Excluded: ${ADDON.excludes.join('; ')}.`,
+    `Refunds: ${ADDON.refund}`,
+    `Access your transaction record + proposals via your private seller link emailed to you (or request it at ${COMPANY.email}).`,
+    ``,
+    `HomesConnect does not act as your estate agent, negotiate on your behalf, recommend terms, hold deposits, or earn commission.`,
+  ];
+  await sendEmail({ to, subject: `Invoice — ${ADDON.name} (${listingId})`, text: lines.join('\n') });
 }
 
 // "Make an Offer" add-on: verify the add-on amount, then set make_an_offer_enabled=true.
@@ -146,6 +183,9 @@ export const handler = async (event) => {
     if (map.custom_str1 === 'mao_enable') {
       const r = await enableMakeAnOffer(map.m_payment_id, map.amount_gross);
       console.log('[payfast-itn] make_an_offer enabled', map.m_payment_id, `paid=R${r.paid}`, 'in', (Date.now() - t0) + 'ms');
+      // ECTA: issue an invoice / transaction record to the seller (best-effort).
+      try { await emailInvoice(map.m_payment_id, map.amount_gross, map.pf_payment_id); }
+      catch (e) { console.error('[payfast-itn] invoice email failed:', e.message); }
     } else {
       const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
       console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');

@@ -32,13 +32,41 @@ export default function MakeOfferPage() {
     proposal_expiry: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
     note_to_seller: '', note_for_conveyancer: '',
   });
-  const [consents, setConsents] = useState({ nonbinding: false, share_seller: false, conveyancer_later: false, privacy: false, marketing: false });
+  const [consents, setConsents] = useState({ disclosure_received: false, nonbinding: false, share_seller: false, conveyancer_later: false, privacy: false, marketing: false });
   const [aiSummary, setAiSummary] = useState('');
   const [explain, setExplain] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [offerId, setOfferId] = useState('');
+  const [disclosure, setDisclosure] = useState<any>(null);
 
   useEffect(() => { loadListings().then((all) => setListing(all.find((l) => l.id === listingId) || null)); }, [listingId]);
+  // Seller's property-condition disclosure record (no PII) — shown to the buyer before submit.
+  useEffect(() => {
+    if (!listingId) return;
+    fetch(`/.netlify/functions/mao-disclosure?listing=${encodeURIComponent(listingId)}`)
+      .then((r) => (r.ok ? r.json() : null)).then(setDisclosure).catch(() => {});
+  }, [listingId]);
+
+  function downloadDisclosure() {
+    if (!disclosure) return;
+    const d = disclosure.disclosure || {};
+    const txt = [
+      `HomesConnect — Seller's property-condition disclosure record`,
+      `Property: ${disclosure.listing?.title} (${disclosure.listing?.id}) — ${disclosure.listing?.suburb}, ${disclosure.listing?.city}`,
+      `Seller: ${disclosure.seller_name}`,
+      disclosure.disclosed_at ? `Disclosed: ${disclosure.disclosed_at}` : '',
+      ``,
+      `Occupancy: ${d.occupancy || '-'}`,
+      `Known defects: ${d.known_defects || '-'}`,
+      `Additions/alterations approved: ${d.additions_approved || '-'}`,
+      `Other notes: ${d.notes || '-'}`,
+      ``,
+      `The seller declared this record complete to the best of their knowledge. Verify independently; this is for discussion and does not create a binding sale.`,
+    ].filter(Boolean).join('\n');
+    const url = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+    const a = document.createElement('a'); a.href = url; a.download = `disclosure-${listingId}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const price = Number(f.proposed_price) || 0;
   const bond = Number(f.bond_amount) || 0;
@@ -86,11 +114,16 @@ export default function MakeOfferPage() {
   async function goReview() {
     if (!validateForm()) return;
     setStage('review'); setAiSummary('…');
-    const { data } = await api('mao-ai', { action: 'summarize', offer: { ...f, proposed_price: price, bond_amount: bond, cash_contribution: cash } });
+    // POPIA s72 — send ONLY de-identified numeric/enum fields to the AI. No name, no notes.
+    const { data } = await api('mao-ai', { action: 'summarize', offer: {
+      proposed_price: price, funding_method: f.funding_method, bond_amount: bond,
+      cash_contribution: cash, deposit_amount: Number(f.deposit_amount) || 0,
+      subject_to_sale: f.subject_to_sale, occupation_date: f.occupation_date, proposal_expiry: f.proposal_expiry,
+    } });
     setAiSummary(data.text || '');
   }
 
-  const allConsents = consents.nonbinding && consents.share_seller && consents.conveyancer_later && consents.privacy;
+  const allConsents = consents.disclosure_received && consents.nonbinding && consents.share_seller && consents.conveyancer_later && consents.privacy;
 
   async function submit() {
     setErr('');
@@ -106,6 +139,7 @@ export default function MakeOfferPage() {
       note_to_seller: f.note_to_seller, note_for_conveyancer: f.note_for_conveyancer,
       ack_nonbinding: consents.nonbinding, consent_share_seller: consents.share_seller,
       ack_conveyancer_later: consents.conveyancer_later, ack_privacy: consents.privacy,
+      ack_disclosure_received: consents.disclosure_received,
       marketing_consent: consents.marketing,
     });
     setBusy(false);
@@ -200,7 +234,25 @@ export default function MakeOfferPage() {
             <li>Valid until: {f.proposal_expiry}</li>
           </ul>
 
+          {/* Seller's property-condition disclosure record (shown before submit) */}
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-faint">Seller's property-condition disclosure</p>
+              {disclosure && <button type="button" onClick={downloadDisclosure} className="text-xs text-teal-bright hover:text-white">Download</button>}
+            </div>
+            {disclosure ? (
+              <ul className="mt-3 text-sm text-soft space-y-1">
+                <li>Occupancy: {disclosure.disclosure?.occupancy || '—'}</li>
+                <li>Known defects: {disclosure.disclosure?.known_defects || '—'}</li>
+                <li>Additions/alterations approved: {disclosure.disclosure?.additions_approved || '—'}</li>
+                {disclosure.disclosure?.notes && <li>Other notes: {disclosure.disclosure.notes}</li>}
+                <li className="text-faint text-xs pt-1">Declared by {disclosure.seller_name} as complete to the best of their knowledge. Verify independently.</li>
+              </ul>
+            ) : <p className="mt-2 text-sm text-faint">Loading the seller's disclosure record…</p>}
+          </div>
+
           <div className="mt-6 space-y-3">
+            <Check checked={consents.disclosure_received} onChange={(v) => setConsents((p) => ({ ...p, disclosure_received: v }))}>I confirm that I have received access to the seller's property-condition disclosure record before submitting my proposed terms.</Check>
             <Check checked={consents.nonbinding} onChange={(v) => setConsents((p) => ({ ...p, nonbinding: v }))}>I understand this is <strong>non-binding</strong> and does not create a sale.</Check>
             <Check checked={consents.share_seller} onChange={(v) => setConsents((p) => ({ ...p, share_seller: v }))}>I consent to sharing these proposed terms with the seller.</Check>
             <Check checked={consents.conveyancer_later} onChange={(v) => setConsents((p) => ({ ...p, conveyancer_later: v }))}>I understand my personal details go to a conveyancer only if the seller proceeds and I consent at that point.</Check>

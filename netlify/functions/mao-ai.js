@@ -64,7 +64,20 @@ export const handler = async (event) => {
     }
 
     if (b.action === 'summarize') {
-      const o = b.offer || {};
+      // POPIA s72 — de-identify. Use ONLY non-identifying numeric/enum fields; never
+      // the buyer's name/phone/email or any free-text notes, even if the client sent
+      // them in the body. (This object is the only thing that reaches the prompt.)
+      const src = b.offer || {};
+      const o = {
+        proposed_price: src.proposed_price,
+        funding_method: src.funding_method,
+        bond_amount: src.bond_amount,
+        cash_contribution: src.cash_contribution,
+        deposit_amount: src.deposit_amount,
+        subject_to_sale: src.subject_to_sale,
+        occupation_date: src.occupation_date,
+        proposal_expiry: src.proposal_expiry,
+      };
       const facts = [
         `Proposed price ${money(o.proposed_price)}`,
         `funding ${o.funding_method}` + (o.funding_method === 'mixed' ? ` (bond ${money(o.bond_amount)} + cash ${money(o.cash_contribution)})` : ''),

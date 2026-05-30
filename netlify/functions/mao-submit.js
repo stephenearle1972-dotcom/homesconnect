@@ -68,6 +68,8 @@ export const handler = async (event) => {
   if (b.consent_share_seller !== true) errors.consent_share_seller = 'Consent to share terms with the seller is required';
   if (b.ack_conveyancer_later !== true) errors.ack_conveyancer_later = 'Please acknowledge how your details may be shared with a conveyancer';
   if (b.ack_privacy !== true) errors.ack_privacy = 'Please confirm you have read the privacy notice';
+  // Legal review #1 — buyer must confirm receipt of the seller's disclosure record.
+  if (b.ack_disclosure_received !== true) errors.ack_disclosure_received = "Please confirm you received the seller's property-condition disclosure record";
   if (Object.keys(errors).length) return json(400, { error: 'Please fix the highlighted items', errors });
 
   // 6. Build the Offer row
@@ -76,7 +78,7 @@ export const handler = async (event) => {
     new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const auditLog = [{
     t: nowIso(), actor: 'buyer', event: 'submitted',
-    consents: { ack_nonbinding: true, share_seller: true, ack_conveyancer_later: true, privacy: true, marketing: b.marketing_consent === true },
+    consents: { ack_nonbinding: true, share_seller: true, ack_conveyancer_later: true, privacy: true, disclosure_received: true, marketing: b.marketing_consent === true },
   }];
   const offer = {
     id, listing_id: listing.id,
