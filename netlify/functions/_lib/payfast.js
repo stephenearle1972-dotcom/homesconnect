@@ -48,6 +48,32 @@ const SANDBOX = {
 
 export const PAYFAST = MODE === 'sandbox' ? SANDBOX : LIVE;
 
+const DEFAULT_SITE_URL = 'https://homesconnect-za.netlify.app';
+
+// Base URL for PayFast return / cancel / notify (ITN) callbacks.
+//
+// PayFast must be able to send the user back to — and POST the ITN to — the SAME
+// deploy the payment started on. On a Netlify branch/preview deploy that is the
+// preview's own public URL, NOT production. So in SANDBOX mode we derive the base
+// from the incoming request's host (always correct at function runtime, on any
+// deploy context), falling back to Netlify's DEPLOY_PRIME_URL / URL build vars.
+//
+// In LIVE mode (production) we keep the explicitly configured site URL exactly as
+// before — production behaviour is unchanged.
+export function siteBaseUrl(event) {
+  if (PAYFAST.mode === 'sandbox') {
+    const h = (event && event.headers) || {};
+    const host = h['x-forwarded-host'] || h['host'] || h['Host'];
+    if (host) {
+      const proto = h['x-forwarded-proto'] || 'https';
+      return `${proto}://${host}`;
+    }
+    return process.env.DEPLOY_PRIME_URL || process.env.URL
+      || process.env.SITE_URL_HOMESCONNECT || DEFAULT_SITE_URL;
+  }
+  return process.env.SITE_URL_HOMESCONNECT || DEFAULT_SITE_URL;
+}
+
 // PayFast urlencode: PHP urlencode style — spaces become '+' (not %20), and a few
 // extra characters are percent-encoded to match PayFast's PHP implementation.
 export function payfastEncode(v) {

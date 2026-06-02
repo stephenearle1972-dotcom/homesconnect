@@ -6,10 +6,9 @@
 // 5. Returns the PayFast post URL + params so the client can auto-submit a form
 
 import { appendRow as sheetsAppendRow } from './_lib/sheets.js';
-import { PAYFAST, signParams } from './_lib/payfast.js';
+import { PAYFAST, signParams, siteBaseUrl } from './_lib/payfast.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
-const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
 
 const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
 const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced', agency: 'Agency' };
@@ -159,12 +158,14 @@ export const handler = async (event) => {
   // 3. Build PayFast params + signature
   const amount = TIER_AMOUNT[body.tier];
   const tierName = TIER_NAME[body.tier];
+  // Callbacks must return to THIS deploy (production = live URL; preview = preview URL).
+  const siteUrl = siteBaseUrl(event);
   const params = {
     merchant_id: PAYFAST.merchantId,
     merchant_key: PAYFAST.merchantKey,
-    return_url: `${SITE_URL}/listing-success?ref=${id}`,
-    cancel_url: `${SITE_URL}/list-property?cancelled=true`,
-    notify_url: `${SITE_URL}/.netlify/functions/payfast-itn`,
+    return_url: `${siteUrl}/listing-success?ref=${id}`,
+    cancel_url: `${siteUrl}/list-property?cancelled=true`,
+    notify_url: `${siteUrl}/.netlify/functions/payfast-itn`,
     name_first: (body.agent_name || '').split(' ')[0] || '',
     name_last:  (body.agent_name || '').split(' ').slice(1).join(' ') || '',
     email_address: body.agent_email,

@@ -115,7 +115,10 @@ const payload = {
   images: ['https://res.cloudinary.com/dkn6tnxao/image/upload/homesconnect/property-01-karoo-farmhouse.jpg'],
   disclaimer_accepted: true,
 };
-const listRes = await listHandler({ httpMethod: 'POST', body: JSON.stringify(payload) });
+// Simulate a request arriving on the preview deploy, so we can prove the callbacks
+// return to THIS deploy (the preview) and not to production.
+const PREVIEW_HOST = 'payfast-sandbox-test--homesconnect-za.netlify.app';
+const listRes = await listHandler({ httpMethod: 'POST', headers: { host: PREVIEW_HOST, 'x-forwarded-proto': 'https' }, body: JSON.stringify(payload) });
 ok(listRes.statusCode === 200, `list-property returns 200 (got ${listRes.statusCode})`);
 const listBody = JSON.parse(listRes.body);
 const listingId = listBody.listing_id;
@@ -131,6 +134,9 @@ ok(listBody.payfast_url === 'https://sandbox.payfast.co.za/eng/process', `posts 
 ok(params.merchant_id === SANDBOX_MID, `outgoing merchant_id is sandbox (got "${params.merchant_id}")`);
 const reSig = refSignature(Object.entries(params), SANDBOX_PASS);
 ok(params.signature === reSig, 'outgoing signature matches independent PHP-faithful reference (sandbox rule)');
+// #3: callbacks must point at the preview deploy, not production.
+ok(params.notify_url === `https://${PREVIEW_HOST}/.netlify/functions/payfast-itn`, `notify_url returns to the preview (got "${params.notify_url}")`);
+ok(params.return_url.startsWith(`https://${PREVIEW_HOST}/`), `return_url returns to the preview (got "${params.return_url}")`);
 ok(params.amount === '249.00', `outgoing amount = 249.00 for enhanced (got "${params.amount}")`);
 // The passphrase (the only secret in the signing chain) must never reach the client.
 ok(SANDBOX_PASS.length === 0 || !JSON.stringify(listBody).includes(SANDBOX_PASS), 'passphrase does not appear in client JSON');
