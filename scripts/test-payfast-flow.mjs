@@ -106,6 +106,7 @@ const payload = {
   tier: 'enhanced',
   images: ['https://res.cloudinary.com/dkn6tnxao/image/upload/homesconnect/property-01-karoo-farmhouse.jpg'],
   disclaimer_accepted: true,
+  ownership_attested: true,
 };
 const listRes = await listHandler({ httpMethod: 'POST', body: JSON.stringify(payload) });
 ok(listRes.statusCode === 200, `list-property returns 200 (got ${listRes.statusCode})`);

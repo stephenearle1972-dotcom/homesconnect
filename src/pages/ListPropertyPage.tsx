@@ -82,6 +82,9 @@ export default function ListPropertyPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [disclaimerOk, setDisclaimerOk] = useState(false);
+  // Separate, additional attestation: right to ADVERTISE the property (distinct from
+  // the private-listing terms checkbox, and from the Make-an-Offer enable declaration).
+  const [ownershipOk, setOwnershipOk] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +104,7 @@ export default function ListPropertyPage() {
     setSeller(next);
     setErrors({});
     setDisclaimerOk(false);
+    setOwnershipOk(false);
     // Reflect the choice in the URL so the page is shareable / bookmarkable.
     const p = new URLSearchParams(params);
     if (next === 'private') p.set('seller', 'private'); else p.delete('seller');
@@ -163,6 +167,7 @@ export default function ListPropertyPage() {
     if (form.agent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.agent_email)) errs.agent_email = 'Enter a valid email';
     if (images.length === 0) errs.images = `Add at least 1 photo (up to ${photoLimit})`;
     if (isPrivate && !disclaimerOk) errs.disclaimer = 'Please accept the private-listing terms to continue';
+    if (isPrivate && !ownershipOk) errs.ownership_attested = 'Please confirm you own or are authorised to list this property';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -188,6 +193,7 @@ export default function ListPropertyPage() {
           // Private sellers don't have a Fidelity Fund Certificate.
           fidelity_fund: isPrivate ? '' : form.fidelity_fund,
           disclaimer_accepted: isPrivate ? disclaimerOk : undefined,
+          ownership_attested: isPrivate ? ownershipOk : undefined,
         }),
       });
       const data = await res.json();
@@ -418,6 +424,27 @@ export default function ListPropertyPage() {
               </span>
             </label>
             {errors.disclaimer && <p className="mt-2 text-sm text-red-300">{errors.disclaimer}</p>}
+
+            {/* Distinct, separate ownership attestation — right to advertise the property. */}
+            <label
+              data-error={errors.ownership_attested ? 'true' : undefined}
+              className="mt-4 flex items-start gap-3 cursor-pointer select-none border-t border-white/10 pt-4"
+            >
+              <input
+                type="checkbox"
+                checked={ownershipOk}
+                onChange={(e) => {
+                  setOwnershipOk(e.target.checked);
+                  if (errors.ownership_attested) setErrors((prev) => { const n = { ...prev }; delete n.ownership_attested; return n; });
+                }}
+                className="mt-1 h-5 w-5 accent-teal flex-shrink-0"
+              />
+              <span className="text-sm text-white">
+                I confirm that I am the registered owner of this property, or am duly
+                authorised to list it for sale. <span className="text-gold-bright">*</span>
+              </span>
+            </label>
+            {errors.ownership_attested && <p className="mt-2 text-sm text-red-300">{errors.ownership_attested}</p>}
           </FormSection>
         )}
 
@@ -426,13 +453,13 @@ export default function ListPropertyPage() {
           {errors.form && <p className="text-sm text-red-300 mb-4">{errors.form}</p>}
           <button
             type="submit"
-            disabled={submitting || uploading || (isPrivate && !disclaimerOk)}
+            disabled={submitting || uploading || (isPrivate && (!disclaimerOk || !ownershipOk))}
             className="btn-gold w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Redirecting to PayFast…' : `Pay R${amount} & List My Property`}
           </button>
-          {isPrivate && !disclaimerOk && (
-            <p className="mt-3 text-xs text-gold-bright text-center">Tick the private-listing terms above to continue.</p>
+          {isPrivate && (!disclaimerOk || !ownershipOk) && (
+            <p className="mt-3 text-xs text-gold-bright text-center">Tick both private-listing confirmations above to continue.</p>
           )}
           <p className="mt-3 text-xs text-faint text-center">
             Payment is processed securely by PayFast. Your listing goes live within 48 hours of payment.

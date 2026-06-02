@@ -23,15 +23,18 @@ const CORS = {
 function bad(status, body) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function ok(body) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 
-// Header order in the sheet (must match the header row, A..AF). The final 6
-// columns (AA..AF) were added for the private-seller path. Append is positional,
-// so this array order must mirror the sheet exactly.
+// Header order in the sheet (must mirror the header row, A..AJ). Append is positional,
+// so this array order must match the sheet EXACTLY — including the Make-an-Offer
+// columns (AG/AH), which this function leaves blank for new listings but must still
+// account for so ownership_attested/_at land at AI/AJ, not AG/AH.
 const SHEET_COLS = [
   'id','type','status','tier','title','price','price_display','bedrooms','bathrooms',
   'garage','garden','pool','pet_friendly','property_type','suburb','city','province',
   'description','imageUrl','image2','image3','agent_name','agent_phone','agent_agency',
   'featured','date_listed',
   'seller_type','disclaimer_accepted','disclaimer_accepted_at','whatsapp','size_sqm','address',
+  'make_an_offer_enabled','make_an_offer_enabled_at',
+  'ownership_attested','ownership_attested_at',
 ];
 
 function formatRand(n) {
@@ -64,6 +67,11 @@ function validate(input) {
   if (isPrivate && input.disclaimer_accepted !== true) {
     errors.disclaimer_accepted = 'You must accept the private-listing terms to continue';
   }
+  // Ownership/authority attestation (right to advertise) — mandatory for private sellers.
+  // Enforced server-side so a forged submit missing the flag is rejected.
+  if (isPrivate && input.ownership_attested !== true) {
+    errors.ownership_attested = 'You must confirm you own or are authorised to list this property';
+  }
 
   if (Array.isArray(input.images)) {
     for (const u of input.images) {
@@ -89,6 +97,7 @@ function buildRow({ id, input }) {
   const phone = (input.agent_phone || '').trim();
   const whatsapp = (input.whatsapp || '').trim() || phone; // default WhatsApp to the contact number
   const disclaimerAccepted = isPrivate && input.disclaimer_accepted === true;
+  const ownershipAttested = isPrivate && input.ownership_attested === true;
 
   const map = {
     id,
@@ -125,6 +134,11 @@ function buildRow({ id, input }) {
     whatsapp,
     size_sqm: input.size ? String(Math.round(Number(input.size)) || '') : '',
     address: (input.address || '').trim(),
+    // Make-an-Offer is never enabled at creation — left blank, set later by its own flow.
+    make_an_offer_enabled: '',
+    make_an_offer_enabled_at: '',
+    ownership_attested: ownershipAttested ? 'yes' : 'no',
+    ownership_attested_at: ownershipAttested ? new Date().toISOString() : '',
   };
   return SHEET_COLS.map((c) => map[c] ?? '');
 }
