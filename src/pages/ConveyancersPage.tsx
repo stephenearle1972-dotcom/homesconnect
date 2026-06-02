@@ -80,7 +80,7 @@ export default function ConveyancersPage() {
       </div>
 
       <p className="mt-8 text-soft text-sm">
-        {loading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'firm' : 'firms'}`}
+        {loading ? 'Loading…' : all.length ? `${filtered.length} ${filtered.length === 1 ? 'firm' : 'firms'}` : ''}
       </p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -89,8 +89,19 @@ export default function ConveyancersPage() {
 
       {!loading && !filtered.length && (
         <div className="mt-6 card-soft rounded-2xl p-10 text-center">
-          <p className="font-display text-2xl text-white">No conveyancers match that search</p>
-          <p className="text-soft mt-2">Try widening your filters, or check back soon as the directory grows.</p>
+          {all.length === 0 ? (
+            <>
+              <p className="font-display text-2xl text-white">We’re building this directory</p>
+              <p className="text-soft mt-2">
+                Conveyancers — <Link to="/list-conveyancer" className="text-teal-bright hover:text-white">list your firm free</Link> and be among the first listed.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-2xl text-white">No conveyancers match that search</p>
+              <p className="text-soft mt-2">Try widening your filters, or check back soon as the directory grows.</p>
+            </>
+          )}
         </div>
       )}
     </div>

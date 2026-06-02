@@ -50,17 +50,17 @@ function Hero() {
         </h1>
         <p className="mt-6 text-soft text-lg md:text-xl max-w-2xl leading-relaxed">
           South Africa's first WhatsApp-powered property search. Buyers message, get instant results,
-          and connect directly with the listing agent. No app. No login. No friction.
+          and connect directly with the seller. No app. No login. No friction.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <a href="#pricing" className="btn-gold">List Your Properties</a>
+          <a href="#pricing" className="btn-gold">List Your Property</a>
           <a href="#pricing" className="btn-ghost">See pricing</a>
           <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">Try the WhatsApp Bot</a>
         </div>
         <div className="mt-16 grid grid-cols-3 gap-4 max-w-xl">
           <Stat top="9" bottom="Provinces" />
           <Stat top="24 / 7" bottom="WhatsApp Bot" />
-          <Stat top="Instant" bottom="Agent Leads" />
+          <Stat top="Instant" bottom="Enquiries" />
         </div>
       </div>
     </section>
@@ -78,10 +78,10 @@ function Stat({ top, bottom }: { top: string; bottom: string }) {
 
 function HowItWorks() {
   const steps = [
-    { n: '01', title: 'Agent lists property', body: 'A HomesConnect licensee onboards the agent and collects the listing details.' },
-    { n: '02', title: 'Listing goes live', body: 'Published on the HomesConnect website and the WhatsApp bot within 48 hours.' },
-    { n: '03', title: 'Buyers search via WhatsApp', body: 'Natural-language queries like "3 bed in Durban under R2.5M" return instant results.' },
-    { n: '04', title: 'Agent gets the lead', body: 'Instant WhatsApp notification with the buyer’s details — no missed opportunities.' },
+    { n: '01', title: 'List your property', body: 'Add your property details, photos and price — or have a HomesConnect licensee set it up for you.' },
+    { n: '02', title: 'It goes live across the network', body: 'Published on the HomesConnect website and the WhatsApp bot within 48 hours.' },
+    { n: '03', title: 'Buyers find it via WhatsApp search', body: 'Natural-language queries like "3 bed in Durban under R2.5M" return instant results.' },
+    { n: '04', title: 'You get the enquiry direct', body: 'An instant WhatsApp notification with the buyer’s details — no missed opportunities.' },
   ];
   return (
     <section id="how-it-works" className="relative py-20 md:py-28">
@@ -113,7 +113,7 @@ function Features() {
   return (
     <section className="py-20 md:py-28 bg-bg-mid/40">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <SectionHeading eyebrow="Features" title="Everything an agent needs" />
+        <SectionHeading eyebrow="Features" title="Everything you need to sell" />
         <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {items.map((f) => (
             <div key={f.title} className="card-soft rounded-2xl p-6">
