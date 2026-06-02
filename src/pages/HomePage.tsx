@@ -22,11 +22,11 @@ export default function HomePage() {
     <>
       <Hero />
       <HowItWorks />
+      <Pricing />
       <Features />
       <FeaturedListings featured={featured} />
       <BotDemo />
       <EmbeddedSearch />
-      <Pricing />
     </>
   );
 }
@@ -54,6 +54,7 @@ function Hero() {
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <a href="#pricing" className="btn-gold">List Your Properties</a>
+          <a href="#pricing" className="btn-ghost">See pricing</a>
           <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">Try the WhatsApp Bot</a>
         </div>
         <div className="mt-16 grid grid-cols-3 gap-4 max-w-xl">
@@ -250,9 +251,13 @@ function Pricing() {
     },
   ];
   return (
-    <section id="pricing" className="py-20 md:py-28">
+    <section id="pricing" className="scroll-mt-24 py-20 md:py-28">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <SectionHeading eyebrow="Pricing" title="Simple monthly pricing for agents" />
+        <SectionHeading eyebrow="Pricing" title="Flat fee. No commission." />
+        <p className="mt-4 text-soft text-lg max-w-2xl leading-relaxed">
+          Pay a simple flat monthly fee — no agent, no commission, ever. List from R99/month on the
+          website and the WhatsApp bot.
+        </p>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {tiers.map((t) => (
             <div key={t.name}
