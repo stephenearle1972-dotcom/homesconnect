@@ -5,14 +5,10 @@
 // 4. Builds a signed PayFast param set
 // 5. Returns the PayFast post URL + params so the client can auto-submit a form
 
-import crypto from 'node:crypto';
 import { appendRow as sheetsAppendRow } from './_lib/sheets.js';
+import { PAYFAST, signParams } from './_lib/payfast.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
-const PAYFAST_MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID;
-const PAYFAST_MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY;
-const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
-const PAYFAST_URL = 'https://www.payfast.co.za/eng/process';
 const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
 
 const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
@@ -137,36 +133,6 @@ async function appendRow(row) {
   return sheetsAppendRow(SHEET_ID, row);
 }
 
-// PayFast signing: URL-encode each value, alphabetise keys, concatenate, append &passphrase=..., md5.
-// IMPORTANT: PayFast wants `+` for spaces (PHP urlencode style), not `%20`.
-function payfastEncode(v) {
-  return encodeURIComponent(String(v))
-    .replace(/%20/g, '+')
-    .replace(/!/g, '%21')
-    .replace(/'/g, '%27')
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
-    .replace(/\*/g, '%2A');
-}
-
-// PayFast signs the params in the ORDER THEY ARE SUBMITTED (their docs / official
-// PHP example iterate the array as-is — NOT alphabetically). The client posts the
-// hidden form fields in this object's insertion order, and PayFast recomputes the
-// signature from the order it receives, so we must sign in insertion order too.
-// (Sorting here was the original bug — it guaranteed a gateway signature mismatch.)
-function signPayfast(params, passphrase) {
-  const parts = [];
-  for (const k of Object.keys(params)) {
-    if (k === 'signature') continue;
-    const v = params[k];
-    if (v === undefined || v === null || v === '') continue;
-    parts.push(`${k}=${payfastEncode(v)}`);
-  }
-  let signString = parts.join('&');
-  if (passphrase) signString += `&passphrase=${payfastEncode(passphrase)}`;
-  return crypto.createHash('md5').update(signString).digest('hex');
-}
-
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
   if (event.httpMethod !== 'POST') return bad(405, { error: 'Method not allowed' });
@@ -194,8 +160,8 @@ export const handler = async (event) => {
   const amount = TIER_AMOUNT[body.tier];
   const tierName = TIER_NAME[body.tier];
   const params = {
-    merchant_id: PAYFAST_MERCHANT_ID,
-    merchant_key: PAYFAST_MERCHANT_KEY,
+    merchant_id: PAYFAST.merchantId,
+    merchant_key: PAYFAST.merchantKey,
     return_url: `${SITE_URL}/listing-success?ref=${id}`,
     cancel_url: `${SITE_URL}/list-property?cancelled=true`,
     notify_url: `${SITE_URL}/.netlify/functions/payfast-itn`,
@@ -207,11 +173,11 @@ export const handler = async (event) => {
     item_name: `HomesConnect ${tierName} Listing — ${body.title}`.slice(0, 100),
     item_description: `${body.bedrooms || 0} bed ${body.property_type} in ${body.suburb}, ${body.city}`.slice(0, 254),
   };
-  params.signature = signPayfast(params, PAYFAST_PASSPHRASE);
+  params.signature = signParams(params, PAYFAST.passphrase);
 
   return ok({
     listing_id: id,
-    payfast_url: PAYFAST_URL,
+    payfast_url: PAYFAST.processUrl,
     params,
   });
 };

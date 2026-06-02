@@ -3,31 +3,10 @@
 // then returns signed PayFast params (custom_str1='mao_enable'). The add-on is only
 // switched on by the ITN after a valid payment. (A demo listing can be enabled
 // without payment via scripts/enable-mao.mjs.)
-import crypto from 'node:crypto';
 import {
   getListingById, getMaoListing, upsertMaoListing, genToken, nowIso, json, CORS, ADDON_AMOUNT, SITE_URL, maoAllowed,
 } from './_lib/mao.js';
-
-const PAYFAST_URL = 'https://www.payfast.co.za/eng/process';
-
-// PayFast urlencode: spaces -> '+', PHP-style. (Same as list-property.js.)
-function pfEnc(v) {
-  return encodeURIComponent(String(v)).replace(/%20/g, '+').replace(/!/g, '%21')
-    .replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A');
-}
-// Sign in INSERTION order (the order fields are posted) — NOT sorted. See list-property.js.
-function signPayfast(params, passphrase) {
-  const parts = [];
-  for (const k of Object.keys(params)) {
-    if (k === 'signature') continue;
-    const v = params[k];
-    if (v === undefined || v === null || v === '') continue;
-    parts.push(`${k}=${pfEnc(v)}`);
-  }
-  let s = parts.join('&');
-  if (passphrase) s += `&passphrase=${pfEnc(passphrase)}`;
-  return crypto.createHash('md5').update(s).digest('hex');
-}
+import { PAYFAST, signParams } from './_lib/payfast.js';
 
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
@@ -98,8 +77,8 @@ export const handler = async (event) => {
 
   // Build signed PayFast params for the once-off add-on fee.
   const params = {
-    merchant_id: process.env.PAYFAST_MERCHANT_ID,
-    merchant_key: process.env.PAYFAST_MERCHANT_KEY,
+    merchant_id: PAYFAST.merchantId,
+    merchant_key: PAYFAST.merchantKey,
     return_url: `${SITE_URL}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enabled=1`,
     cancel_url: `${SITE_URL}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enable_cancelled=1`,
     notify_url: `${SITE_URL}/.netlify/functions/payfast-itn`,
@@ -112,7 +91,7 @@ export const handler = async (event) => {
     item_description: `Enables non-binding proposed terms on listing ${listing.id}`.slice(0, 254),
     custom_str1: 'mao_enable',
   };
-  params.signature = signPayfast(params, process.env.PAYFAST_PASSPHRASE || '');
+  params.signature = signParams(params, PAYFAST.passphrase);
 
-  return json(200, { payfast_url: PAYFAST_URL, params, token });
+  return json(200, { payfast_url: PAYFAST.processUrl, params, token });
 };

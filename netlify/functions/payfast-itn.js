@@ -2,29 +2,16 @@
 // Validates the ITN, then flips the listing row in the Google Sheet from
 // status="pending_payment" to status="active".
 
-import crypto from 'node:crypto';
 import { getAllValues, updateCell } from './_lib/sheets.js';
 import { sendEmail } from './_lib/email.js';
 import { getMaoListing, COMPANY, ADDON, SITE_URL, maoAllowed } from './_lib/mao.js';
+import { PAYFAST, signPairs } from './_lib/payfast.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
-const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
-const PAYFAST_MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID;
 
 const TIER_AMOUNT = { basic: 99, enhanced: 249, agency: 999 };
 // "Make an Offer" add-on once-off fee (custom_str1 === 'mao_enable').
 const MAO_ADDON_AMOUNT = Math.round(Number(process.env.MAO_ADDON_AMOUNT || '299') || 299);
-
-// PayFast urlencode: spaces -> '+', not %20. See list-property.js for details.
-function payfastEncode(v) {
-  return encodeURIComponent(String(v))
-    .replace(/%20/g, '+')
-    .replace(/!/g, '%21')
-    .replace(/'/g, '%27')
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
-    .replace(/\*/g, '%2A');
-}
 
 function parseFormBody(body) {
   // application/x-www-form-urlencoded → ordered list of [key, value] pairs.
@@ -37,13 +24,6 @@ function parseFormBody(body) {
     out.push([k, v]);
   }
   return out;
-}
-
-function buildSignString(pairs, passphrase) {
-  // PayFast expects params in the order they were SENT, excluding `signature`.
-  const filtered = pairs.filter(([k]) => k !== 'signature');
-  const enc = filtered.map(([k, v]) => `${k}=${payfastEncode(v)}`).join('&');
-  return passphrase ? `${enc}&passphrase=${payfastEncode(passphrase)}` : enc;
 }
 
 // Look up the pending row, verify the paid amount matches the tier it was created
@@ -157,16 +137,14 @@ export const handler = async (event) => {
     merchant_id: map.merchant_id,
   });
 
-  // 1. Verify merchant_id matches ours
-  if (PAYFAST_MERCHANT_ID && map.merchant_id !== PAYFAST_MERCHANT_ID) {
+  // 1. Verify merchant_id matches ours (live or sandbox, per PAYFAST_MODE)
+  if (PAYFAST.merchantId && map.merchant_id !== PAYFAST.merchantId) {
     console.error('[payfast-itn] merchant_id mismatch:', map.merchant_id);
     return { statusCode: 200, body: 'OK' };
   }
 
-  // 2. Verify signature
-  const expectedSig = crypto.createHash('md5')
-    .update(buildSignString(pairs, PAYFAST_PASSPHRASE))
-    .digest('hex');
+  // 2. Verify signature (insertion order, passphrase appended only if configured)
+  const expectedSig = signPairs(pairs, PAYFAST.passphrase);
   if (expectedSig !== map.signature) {
     console.error('[payfast-itn] signature mismatch. expected:', expectedSig, 'got:', map.signature);
     return { statusCode: 200, body: 'OK' };
