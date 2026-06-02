@@ -10,7 +10,7 @@ export default function Footer() {
           <Logo />
           <p className="mt-4 text-soft max-w-md text-sm leading-relaxed">
             South Africa's first WhatsApp-powered property search. Buyers message, get instant results,
-            and connect directly with the listing agent. No app. No login. No friction.
+            and connect directly with the seller. No app. No login. No friction.
           </p>
         </div>
         <div>
