@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { RECURRING_BILLING, RECURRING_NOTICE } from '../lib/constants';
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dkn6tnxao';
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'homesconnect_listings';
@@ -22,16 +23,18 @@ const FSBO_DISCLAIMER =
   'sale. All negotiations and the sale itself are directly between the buyer and the ' +
   'seller. By listing, you confirm you are entitled to sell or let this property.';
 
-// Tier id, price and photo limit are identical for both seller types. Only the
-// top tier's NAME differs: agents see "Agency Package", private sellers see "Premium"
-// (an individual is not an agency).
+// Agents choose from three tiers. Private (FSBO) sellers get exactly ONE tier:
+// "Private Seller" — R99/month, up to 3 photos, buyer enquiries via WhatsApp.
 function tiersFor(seller: Seller): { id: Tier; name: string; price: string; amount: number; photoLimit: number; features: string[] }[] {
+  if (seller === 'private') {
+    return [
+      { id: 'basic', name: 'Private Seller', price: 'R99', amount: 99, photoLimit: 3, features: ['Your own listing', 'Up to 3 photos', 'Website + WhatsApp bot visibility', 'Buyer enquiries via WhatsApp', 'Cancel anytime'] },
+    ];
+  }
   return [
     { id: 'basic',    name: 'Basic Listing',    price: 'R99',  amount: 99,  photoLimit: 3,  features: ['1 listing', '3 photos', 'Bot visibility', 'Web listing', 'Lead notifications'] },
     { id: 'enhanced', name: 'Enhanced Listing', price: 'R249', amount: 249, photoLimit: 10, features: ['1 listing', '10 photos', 'Priority bot results', 'Video / tour links', 'Analytics', '1 featured / month'] },
-    seller === 'private'
-      ? { id: 'agency', name: 'Premium',        price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] }
-      : { id: 'agency', name: 'Agency Package', price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '5 sub-accounts', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] },
+    { id: 'agency',   name: 'Agency Package',   price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '5 sub-accounts', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] },
   ];
 }
 
@@ -73,7 +76,8 @@ export default function ListPropertyPage() {
   const [params, setParams] = useSearchParams();
   const cancelled = params.get('cancelled') === 'true';
   const initialSeller: Seller = params.get('seller') === 'private' ? 'private' : 'agent';
-  const initialTier = (params.get('tier') as Tier) || 'enhanced';
+  // Private sellers only ever have the single "basic" tier; agents default to enhanced.
+  const initialTier = (params.get('tier') as Tier) || (initialSeller === 'private' ? 'basic' : 'enhanced');
 
   const [seller, setSeller] = useState<Seller>(initialSeller);
   const [tier, setTier] = useState<Tier>(initialTier);
@@ -97,11 +101,15 @@ export default function ListPropertyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTier]);
 
-  const photoLimit = TIERS.find((t) => t.id === tier)!.photoLimit;
-  const amount = TIERS.find((t) => t.id === tier)!.amount;
+  // Fall back to the first available tier so switching seller type can never land on a
+  // tier that doesn't exist for that type (private has only "basic").
+  const selectedTier = TIERS.find((t) => t.id === tier) || TIERS[0];
+  const photoLimit = selectedTier.photoLimit;
+  const amount = selectedTier.amount;
 
   function chooseSeller(next: Seller) {
     setSeller(next);
+    if (next === 'private') setTier('basic'); // single private tier
     setErrors({});
     setDisclaimerOk(false);
     setOwnershipOk(false);
@@ -275,7 +283,7 @@ export default function ListPropertyPage() {
                 }`}
               >
                 <p className="font-display text-xl text-white">{t.name}</p>
-                <p className="mt-2 font-display text-3xl text-gold-bright">{t.price}<span className="text-xs text-faint ml-1">/mo</span></p>
+                <p className="mt-2 font-display text-3xl text-gold-bright">{t.price}{RECURRING_BILLING && <span className="text-xs text-faint ml-1">/mo</span>}</p>
                 <ul className="mt-3 space-y-1 text-xs text-soft">
                   {t.features.slice(0, 4).map((f) => <li key={f}>· {f}</li>)}
                 </ul>
@@ -451,18 +459,31 @@ export default function ListPropertyPage() {
         {/* Submit */}
         <div className="card-soft rounded-2xl p-6">
           {errors.form && <p className="text-sm text-red-300 mb-4">{errors.form}</p>}
+          {/* Recurring-billing disclosure (CPA/ECTA) — shown only when billing is actually
+              recurring, BEFORE the seller pays. */}
+          {RECURRING_BILLING && (
+            <div className="mb-5 rounded-xl border border-gold/40 bg-gold/10 p-4">
+              <p className="text-sm text-white font-medium">Recurring monthly subscription — R{amount}/month</p>
+              <p className="mt-1 text-xs text-soft leading-relaxed">{RECURRING_NOTICE}</p>
+            </div>
+          )}
           <button
             type="submit"
             disabled={submitting || uploading || (isPrivate && (!disclaimerOk || !ownershipOk))}
             className="btn-gold w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Redirecting to PayFast…' : `Pay R${amount} & List My Property`}
+            {submitting
+              ? 'Redirecting to PayFast…'
+              : RECURRING_BILLING
+                ? `Subscribe — R${amount}/month & List My Property`
+                : `Pay R${amount} & List My Property`}
           </button>
           {isPrivate && (!disclaimerOk || !ownershipOk) && (
             <p className="mt-3 text-xs text-gold-bright text-center">Tick both private-listing confirmations above to continue.</p>
           )}
           <p className="mt-3 text-xs text-faint text-center">
             Payment is processed securely by PayFast. Your listing goes live within 48 hours of payment.
+            {RECURRING_BILLING && ' You can cancel anytime from the private seller link we email you.'}
           </p>
         </div>
       </form>

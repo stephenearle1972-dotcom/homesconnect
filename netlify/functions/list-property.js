@@ -6,13 +6,16 @@
 // 5. Returns the PayFast post URL + params so the client can auto-submit a form
 
 import { appendRow as sheetsAppendRow } from './_lib/sheets.js';
-import { PAYFAST, signParams } from './_lib/payfast.js';
+import { PAYFAST, signParams, RECURRING_ENABLED, subscriptionFields } from './_lib/payfast.js';
+import { upsertSub } from './_lib/subscriptions.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
 
 const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
 const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced', agency: 'Agency' };
+// Private (FSBO) sellers get exactly ONE tier — "Private Seller", R99/month, 3 photos.
+const PRIVATE_PHOTO_CAP = 3;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -155,6 +158,14 @@ export const handler = async (event) => {
   try { body = JSON.parse(event.body || '{}'); }
   catch { return bad(400, { error: 'Bad JSON' }); }
 
+  // Private sellers have a single tier ("Private Seller", R99, 3 photos). Coerce
+  // server-side so a tampered/legacy payload can't buy a multi-listing tier or post
+  // more than 3 photos on a private listing.
+  if (body.seller_type === 'private') {
+    body.tier = 'basic';
+    if (Array.isArray(body.images)) body.images = body.images.slice(0, PRIVATE_PHOTO_CAP);
+  }
+
   const errors = validate(body);
   if (errors) return bad(400, { error: 'Validation failed', errors });
 
@@ -173,6 +184,7 @@ export const handler = async (event) => {
   // 3. Build PayFast params + signature
   const amount = TIER_AMOUNT[body.tier];
   const tierName = TIER_NAME[body.tier];
+  const recurring = RECURRING_ENABLED;
   const params = {
     merchant_id: PAYFAST.merchantId,
     merchant_key: PAYFAST.merchantKey,
@@ -187,11 +199,37 @@ export const handler = async (event) => {
     item_name: `HomesConnect ${tierName} Listing — ${body.title}`.slice(0, 100),
     item_description: `${body.bedrooms || 0} bed ${body.property_type} in ${body.suburb}, ${body.city}`.slice(0, 254),
   };
+  // When recurring billing is on, turn this into a real monthly subscription. The five
+  // subscription fields are appended AFTER item_description so signing (insertion order)
+  // and the posted form agree. recurring_amount == the tier price, charged every month
+  // until the seller cancels / marks sold. Off => unchanged once-off payment.
+  if (recurring) {
+    Object.assign(params, subscriptionFields(amount));
+  }
   params.signature = signParams(params, PAYFAST.passphrase);
+
+  // 4. For subscriptions, seed a PENDING row in the private subscription store now so
+  // the seller has a manage/cancel link immediately. The PayFast subscription token is
+  // captured later from the first ITN. Best-effort: the ITN re-upserts this row anyway.
+  if (recurring) {
+    try {
+      await upsertSub(id, {
+        seller_email: body.agent_email || '',
+        seller_name: (body.agent_name || '').trim(),
+        tier: body.tier,
+        amount,
+        status: 'pending',
+        last_event: 'checkout_started',
+      });
+    } catch (err) {
+      console.error('[list-property] subscription pre-seed failed (ITN will recreate):', err.message);
+    }
+  }
 
   return ok({
     listing_id: id,
     payfast_url: PAYFAST.processUrl,
     params,
+    recurring,
   });
 };

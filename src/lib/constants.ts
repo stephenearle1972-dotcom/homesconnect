@@ -13,6 +13,16 @@ export const CSV_URL =
 // Free conveyancer directory — separate tab, published CSV (VITE_CONVEYANCERS_CSV_URL).
 export const CONVEYANCERS_CSV_URL = import.meta.env.VITE_CONVEYANCERS_CSV_URL || '';
 
+// Recurring billing flag — MIRRORS the server PAYFAST_RECURRING_ENABLED. When 'true',
+// listing tiers are real monthly subscriptions and the UI must say so honestly (CPA/ECTA).
+// When unset/false, listings are once-off and we must NOT show "/month" wording.
+export const RECURRING_BILLING = import.meta.env.VITE_PAYFAST_RECURRING_ENABLED === 'true';
+export const RECURRING_NOTICE =
+  'This is a recurring monthly subscription. Your card is charged this amount every month ' +
+  'automatically until you cancel or mark the property as sold — there is no fixed term. ' +
+  'You can cancel at any time from your private seller link (emailed to you when your listing ' +
+  'goes live): just choose “Mark as sold” or “Remove listing”, which stops all further billing.';
+
 // ECTA supplier disclosure for the add-on checkout. Replace `address` with the exact
 // registered street address when provided (one-line change).
 export const COMPANY = {

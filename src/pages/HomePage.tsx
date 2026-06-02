@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { WA_LINK } from '../lib/constants';
+import { WA_LINK, RECURRING_BILLING } from '../lib/constants';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
@@ -224,9 +224,10 @@ function Bubble({ side, children }: { side: 'user' | 'bot'; children: React.Reac
 }
 
 function Pricing() {
+  const per = RECURRING_BILLING ? '/mo per property' : ' per property';
   const tiers = [
     {
-      name: 'Basic Listing', price: 'R99', per: '/mo per property',
+      name: 'Basic Listing', price: 'R99', per,
       features: ['1 listing', '3 photos', 'Bot visibility', 'Basic agent profile', 'Web listing', 'Lead notifications'],
       highlight: false,
       cta: 'Get Started',
@@ -234,7 +235,7 @@ function Pricing() {
       tierParam: 'basic',
     },
     {
-      name: 'Enhanced Listing', price: 'R249', per: '/mo per property',
+      name: 'Enhanced Listing', price: 'R249', per,
       features: ['1 listing', '10 photos', 'Priority bot results', 'Enhanced profile', 'Video / tour links', 'Analytics', '1 featured / month'],
       highlight: true,
       cta: 'Get Started',
@@ -242,7 +243,7 @@ function Pricing() {
       tierParam: 'enhanced',
     },
     {
-      name: 'Agency Package', price: 'R999', per: '/mo per agency',
+      name: 'Agency Package', price: 'R999', per: RECURRING_BILLING ? '/mo per agency' : ' per agency',
       features: ['Up to 10 listings', '5 agent sub-accounts', '15 photos per listing', 'Top of results', 'Branded profile', '3 featured / month'],
       highlight: false,
       cta: 'Get Started',
@@ -255,8 +256,9 @@ function Pricing() {
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         <SectionHeading eyebrow="Pricing" title="Flat fee. No commission." />
         <p className="mt-4 text-soft text-lg max-w-2xl leading-relaxed">
-          Pay a simple flat monthly fee — no agent, no commission, ever. List from R99/month on the
-          website and the WhatsApp bot.
+          {RECURRING_BILLING
+            ? <>Pay a simple flat monthly fee — no agent, no commission, ever. List from R99/month on the website and the WhatsApp bot. It’s a recurring subscription you can cancel anytime.</>
+            : <>Pay a simple flat fee — no agent, no commission, ever. List from R99 on the website and the WhatsApp bot.</>}
         </p>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {tiers.map((t) => (
@@ -292,13 +294,15 @@ function Pricing() {
         </div>
         <p className="mt-6 text-xs text-faint text-center">
           All prices exclude 15% VAT. Contact us for custom packages.
+          {RECURRING_BILLING && ' Listings are billed monthly until you cancel or mark the property sold.'}
         </p>
 
         <div className="mt-8 card-soft rounded-2xl px-6 py-6 text-center">
           <p className="font-display text-2xl text-white">Selling your own home?</p>
           <p className="mt-2 text-soft text-sm max-w-xl mx-auto">
-            No agent, no commission. List your own property privately from R99 — same tiers,
-            same reach on the website and WhatsApp bot.
+            No agent, no commission. List your own property privately for{' '}
+            {RECURRING_BILLING ? 'R99/month' : 'R99'} — up to 3 photos, buyer enquiries straight
+            to your WhatsApp, and the same reach on the website and bot.
           </p>
           <Link to="/list-property?seller=private" className="btn-gold mt-5 inline-block">
             List as a private seller

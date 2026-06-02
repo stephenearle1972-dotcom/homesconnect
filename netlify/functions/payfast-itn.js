@@ -6,6 +6,7 @@ import { getAllValues, updateCell } from './_lib/sheets.js';
 import { sendEmail } from './_lib/email.js';
 import { getMaoListing, COMPANY, ADDON, SITE_URL, maoAllowed } from './_lib/mao.js';
 import { PAYFAST, signPairs } from './_lib/payfast.js';
+import { getSubByListingId, upsertSub } from './_lib/subscriptions.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 
@@ -122,6 +123,100 @@ function colLetter(idx) {
   return s;
 }
 
+// Set the public-listing `status` cell (active | inactive | sold) by listing id.
+async function setListingStatusById(listingId, status) {
+  const { tab, values: rows } = await getAllValues(SHEET_ID);
+  if (!rows.length) throw new Error('Sheet empty');
+  const headers = rows[0];
+  const idCol = headers.indexOf('id');
+  const statusCol = headers.indexOf('status');
+  if (idCol === -1 || statusCol === -1) throw new Error('Missing id/status column');
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][idCol] === listingId) {
+      await updateCell(SHEET_ID, tab, `${colLetter(statusCol)}${i + 1}`, status);
+      return true;
+    }
+  }
+  return false;
+}
+
+// SUBSCRIPTION (recurring) — a successful monthly charge. Capture the PayFast token
+// (needed to cancel later), log the charge, and keep the listing active. On the FIRST
+// charge, email the seller their private manage/cancel link.
+async function recordSubscriptionCharge(map, token) {
+  const listingId = map.m_payment_id;
+  const existing = await getSubByListingId(listingId);
+  const firstCapture = !existing || !existing.token;
+  const sellerEmail = (existing && existing.seller_email) || map.email_address || '';
+  const sellerName = (existing && existing.seller_name) ||
+    [map.name_first, map.name_last].filter(Boolean).join(' ').trim();
+
+  const sub = await upsertSub(listingId, {
+    token,
+    status: 'active',
+    seller_email: sellerEmail,
+    seller_name: sellerName,
+    last_billed_at: new Date().toISOString(),
+    last_event: firstCapture ? 'first_charge' : 'recurring_charge',
+  });
+
+  if (firstCapture && sub.seller_email) {
+    const link = `${SITE_URL}/seller?listing=${encodeURIComponent(listingId)}&manage=${encodeURIComponent(sub.manage_token)}`;
+    const lines = [
+      `Your HomesConnect listing is now live. Thank you!`,
+      ``,
+      `IMPORTANT — this is a recurring monthly subscription. Your card will be charged`,
+      `R${Number(sub.amount || 0)} every month automatically until you cancel or mark the`,
+      `property as sold. There is no fixed term and you can stop billing at any time.`,
+      ``,
+      `Manage your listing and STOP billing here (keep this link private):`,
+      link,
+      ``,
+      `On that page you can "Mark as sold" or "Remove listing" — either one immediately`,
+      `cancels the subscription so no further payment is taken.`,
+      ``,
+      `${COMPANY.name} · Reg ${COMPANY.reg} · ${COMPANY.email}`,
+    ];
+    await sendEmail({ to: sub.seller_email, subject: 'Your HomesConnect listing is live — manage or cancel anytime', text: lines.join('\n') });
+  }
+}
+
+// SUBSCRIPTION — a non-COMPLETE ITN that carries a subscription token. PayFast cannot
+// be fully exercised in sandbox, so we take the safe interpretation the spec asks for:
+// a failed recurring charge (after PayFast's own retries) takes the listing offline and
+// notifies the seller. We ONLY act on a sub still marked `active` — if we already
+// cancelled/sold/removed it, this is just PayFast echoing the stop, so we ignore it
+// (no false "payment failed" email).
+async function handleRecurringNonComplete(map, token) {
+  const listingId = map.m_payment_id;
+  const sub = await getSubByListingId(listingId);
+  if (!sub || sub.status !== 'active') {
+    console.log('[payfast-itn] non-COMPLETE for non-active/unknown subscription, ignoring:', listingId, map.payment_status);
+    return;
+  }
+  await upsertSub(listingId, {
+    status: 'payment_failed',
+    last_event: `payment_${String(map.payment_status || 'failed').toLowerCase()}`,
+  });
+  await setListingStatusById(listingId, 'inactive');
+  if (sub.seller_email) {
+    const link = `${SITE_URL}/seller?listing=${encodeURIComponent(listingId)}&manage=${encodeURIComponent(sub.manage_token)}`;
+    const lines = [
+      `We were unable to collect this month's subscription payment for your HomesConnect listing.`,
+      ``,
+      `Your listing has been temporarily hidden from the site and WhatsApp bot. As soon as a`,
+      `payment succeeds it goes live again automatically.`,
+      ``,
+      `To update your card / payment, or to cancel the listing so no further attempts are made,`,
+      `use your private manage link:`,
+      link,
+      ``,
+      `${COMPANY.name} · ${COMPANY.email}`,
+    ];
+    await sendEmail({ to: sub.seller_email, subject: 'Action needed — payment issue on your HomesConnect listing', text: lines.join('\n') });
+  }
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
@@ -150,15 +245,25 @@ export const handler = async (event) => {
     return { statusCode: 200, body: 'OK' };
   }
 
-  // 3. Verify payment_status
+  // A subscription (recurring) payment carries the PayFast subscription `token`.
+  const subToken = map.token || '';
+
+  // 3. Verify payment_status. A non-COMPLETE ITN that carries a subscription token is
+  //    a failed recurring charge → take the listing offline + notify the seller.
   if (map.payment_status !== 'COMPLETE') {
-    console.log('[payfast-itn] payment_status not COMPLETE, ignoring:', map.payment_status);
+    if (subToken) {
+      try { await handleRecurringNonComplete(map, subToken); }
+      catch (e) { console.error('[payfast-itn] recurring non-complete handling failed:', e.message); }
+    } else {
+      console.log('[payfast-itn] payment_status not COMPLETE, ignoring:', map.payment_status);
+    }
     return { statusCode: 200, body: 'OK' };
   }
 
-  // 4. Apply the payment. Two payment types share this ITN:
-  //    - custom_str1='mao_enable' → enable the Make an Offer add-on on the listing
-  //    - otherwise → activate a newly-paid listing (verify amount matches the tier)
+  // 4. Apply the payment. Three payment types share this ITN:
+  //    - custom_str1='mao_enable' → enable the Make an Offer add-on (always once-off)
+  //    - subscription (token present) → activate/keep-active + capture token, log charge
+  //    - otherwise → activate a newly-paid once-off listing (verify amount matches tier)
   try {
     if (map.custom_str1 === 'mao_enable') {
       const r = await enableMakeAnOffer(map.m_payment_id, map.amount_gross);
@@ -169,6 +274,11 @@ export const handler = async (event) => {
     } else {
       const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
       console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');
+      // Recurring subscription: capture token + log this monthly charge (best-effort).
+      if (subToken) {
+        try { await recordSubscriptionCharge(map, subToken); }
+        catch (e) { console.error('[payfast-itn] subscription record failed:', e.message); }
+      }
     }
   } catch (err) {
     console.error('[payfast-itn] not applied:', err.message);

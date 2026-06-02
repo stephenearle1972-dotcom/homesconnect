@@ -87,3 +87,111 @@ export function signPairs(pairs, passphrase = PAYFAST.passphrase) {
     .update(passphrase ? `${enc}&passphrase=${payfastEncode(passphrase)}` : enc)
     .digest('hex');
 }
+
+// ---------------------------------------------------------------------------
+// RECURRING (subscription) billing
+// ---------------------------------------------------------------------------
+// One reversible toggle, exactly like PAYFAST_MODE. When OFF (the default), every
+// payment is once-off and the listing flow behaves byte-for-byte as it always has —
+// so production stays once-off until the live R5/month test passes and this is
+// flipped on. When ON, listing tiers are created as real monthly subscriptions.
+export const RECURRING_ENABLED =
+  String(process.env.PAYFAST_RECURRING_ENABLED || '').trim().toLowerCase() === 'true';
+
+export const FREQUENCY_MONTHLY = 3; // PayFast frequency codes: 1=daily 2=weekly 3=monthly 4=quarterly 5=biannual 6=annual
+export const CYCLES_INDEFINITE = 0; // 0 = bill indefinitely until cancelled
+
+// Today's date as YYYY-MM-DD (used for billing_date — the first recurring charge).
+export function todayYmd() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// The five subscription fields that turn a standard checkout into a monthly
+// subscription. Returned in PayFast's documented order so that, combined with our
+// insertion-order signing, the signed string and the posted form agree.
+// `amountRands` is a string like "99.00" (same rand-decimal format as `amount`).
+export function subscriptionFields(amountRands, { billingDate = todayYmd() } = {}) {
+  return {
+    subscription_type: '1',
+    billing_date: billingDate,
+    recurring_amount: amountRands,
+    frequency: String(FREQUENCY_MONTHLY),
+    cycles: String(CYCLES_INDEFINITE),
+  };
+}
+
+// ---- Subscriptions API (cancel / fetch) -----------------------------------
+// IMPORTANT: the API request signature is DIFFERENT from the checkout signature.
+// PayFast's API signs the merged header + body values SORTED ALPHABETICALLY by key,
+// with the passphrase folded INTO the sorted set (key "passphrase"), then MD5. This
+// matches PayFast's own PHP SDK (Auth::generateApiSignature). The checkout signature,
+// by contrast, is insertion-order with passphrase appended at the end — do not mix
+// the two up.
+const API_BASE = MODE === 'sandbox'
+  ? 'https://api.payfast.co.za' // same host; sandbox is selected via ?testing=true
+  : 'https://api.payfast.co.za';
+const API_VERSION = 'v1';
+
+// PayFast API timestamp: PHP date("Y-m-d\TH:i:sO"), e.g. 2026-06-02T12:00:00+0000.
+function apiTimestamp() {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, '+0000');
+}
+
+export function signApiData(data, passphrase = PAYFAST.passphrase) {
+  const all = { ...data };
+  if (passphrase) all.passphrase = passphrase;
+  const s = Object.keys(all)
+    .filter((k) => k !== 'signature')
+    .sort()
+    .map((k) => `${k}=${payfastEncode(all[k])}`)
+    .join('&');
+  return crypto.createHash('md5').update(s).digest('hex');
+}
+
+// Low-level signed API call. `token` is the PayFast subscription token. Returns the
+// parsed JSON body and throws on a non-2xx response so callers can log/handle it.
+async function subscriptionApi(method, token, action, body = {}) {
+  if (!token) throw new Error('subscription token required');
+  if (!PAYFAST.passphrase) throw new Error('PAYFAST passphrase required for subscription API calls');
+
+  const headers = {
+    'merchant-id': PAYFAST.merchantId,
+    version: API_VERSION,
+    timestamp: apiTimestamp(),
+  };
+  // Signature is computed over headers + body together.
+  const signature = signApiData({ ...headers, ...body }, PAYFAST.passphrase);
+
+  const qs = MODE === 'sandbox' ? '?testing=true' : '';
+  const url = `${API_BASE}/subscriptions/${encodeURIComponent(token)}/${action}${qs}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      ...headers,
+      signature,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: method === 'GET' ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  if (!res.ok) {
+    const err = new Error(`PayFast subscriptions/${action} ${res.status}: ${json?.data?.response || json?.data?.message || text}`);
+    err.code = res.status;
+    err.detail = json;
+    throw err;
+  }
+  return json;
+}
+
+// Cancel a subscription so PayFast stops all further billing. Idempotent enough for
+// our use: cancelling an already-cancelled token returns an error we treat as success.
+export async function cancelSubscription(token) {
+  return subscriptionApi('PUT', token, 'cancel');
+}
+
+// Fetch a subscription's current status from PayFast (used to PROVE billing stopped).
+export async function fetchSubscription(token) {
+  return subscriptionApi('GET', token, 'fetch');
+}

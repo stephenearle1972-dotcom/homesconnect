@@ -21,16 +21,25 @@ export default function SellerPortalPage() {
   const [params] = useSearchParams();
   const listingId = params.get('listing') || '';
   const token = params.get('token') || '';
+  const manageToken = params.get('manage') || '';
   const justEnabled = params.get('enabled') === '1';
   const enableCancelled = params.get('enable_cancelled') === '1';
 
   const [listing, setListing] = useState<Listing | null | undefined>(undefined);
-  const [view, setView] = useState<'loading' | 'enable' | 'requestlink' | 'dashboard' | 'invalid'>('loading');
+  const [view, setView] = useState<'loading' | 'enable' | 'requestlink' | 'dashboard' | 'manage' | 'invalid'>('loading');
   const [data, setData] = useState<any>(null);
+  const [manageData, setManageData] = useState<any>(null);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     (async () => {
+      // Listing / recurring-billing management — token-gated and independent of the
+      // public listings feed (a sold/removed listing is no longer in that feed).
+      if (manageToken) {
+        const res = await fetch(`/.netlify/functions/listing-manage?listing=${encodeURIComponent(listingId)}&manage=${encodeURIComponent(manageToken)}`);
+        if (res.ok) { setManageData(await res.json()); setView('manage'); return; }
+        setView('invalid'); return;
+      }
       const all = await loadListings();
       const l = all.find((x) => x.id === listingId) || null;
       setListing(l);
@@ -42,9 +51,10 @@ export default function SellerPortalPage() {
       }
       setView(l.makeAnOfferEnabled ? 'requestlink' : 'enable');
     })();
-  }, [listingId, token]);
+  }, [listingId, token, manageToken]);
 
   if (view === 'loading') return <Wrap><p className="text-soft">Loading…</p></Wrap>;
+  if (view === 'manage') return <ManageBillingView listingId={listingId} token={manageToken} data={manageData} />;
   if (view === 'invalid' || listing === null) return <Wrap><p className="font-display text-2xl text-white">This link is invalid or has expired.</p><Link to="/" className="text-teal-bright">← Home</Link></Wrap>;
 
   // Public gate: the paid enable path is unavailable on real listings while gated.
@@ -332,6 +342,102 @@ function ProceedPanel({ busy, act }: { busy: boolean; act: (a: string, e?: any) 
       </button>
       <p className="mt-2 text-[11px] text-faint">{FRAUD_NOTICE}</p>
     </Panel>
+  );
+}
+
+// ---------- Manage listing + recurring billing (cancel) ----------
+function ManageBillingView({ listingId, token, data }: { listingId: string; token: string; data: any }) {
+  const [sub, setSub] = useState<any>(data?.subscription || null);
+  const [listingStatus, setListingStatus] = useState<string>(data?.listing?.status || 'unknown');
+  const [confirm, setConfirm] = useState<'' | 'sold' | 'remove'>('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<any>(null);
+
+  const title = data?.listing?.title || listingId;
+  const billingActive = sub?.billing_active;
+  const stopped = sub && ['cancelled', 'sold', 'removed'].includes(sub.status);
+
+  async function doCancel(action: 'sold' | 'remove') {
+    setBusy(true); setErr('');
+    const { ok, data: res } = await api('listing-cancel', { listing_id: listingId, token, action });
+    setBusy(false);
+    if (!ok) { setErr(res.error || 'Could not complete — please try again or email us.'); return; }
+    setResult(res);
+    setConfirm('');
+    setListingStatus(res.listing_status);
+    setSub((s: any) => ({ ...s, status: action === 'sold' ? 'sold' : 'removed', billing_active: false }));
+  }
+
+  return (
+    <Wrap>
+      <p className="chip bg-white/5 text-gold-bright mb-4">Seller · Manage listing &amp; billing</p>
+      <h1 className="font-display text-3xl md:text-5xl text-white">{title}</h1>
+
+      <Section title="Your subscription">
+        {!data?.recurring_enabled && (
+          <p className="mb-3 rounded-xl border border-white/10 bg-white/5 p-3 text-faint text-xs">
+            Recurring billing is not currently active for this site. The controls below still let you take the listing down.
+          </p>
+        )}
+        <ul className="text-soft text-sm space-y-1">
+          <li>Listing status: <strong className="text-white">{listingStatus}</strong></li>
+          <li>Billing: {billingActive
+            ? <strong className="text-teal-bright">Active — R{sub?.amount} charged monthly until you cancel</strong>
+            : stopped
+              ? <strong className="text-gold-bright">Cancelled — no further payments will be taken</strong>
+              : <span className="text-soft">Pending first payment</span>}
+          </li>
+          {sub?.last_billed_at && <li className="text-faint text-xs">Last charged: {new Date(sub.last_billed_at).toLocaleDateString('en-ZA')}</li>}
+        </ul>
+      </Section>
+
+      {result && (
+        <Section title="Done — billing stopped">
+          <p className="text-soft text-sm">
+            Your listing has been marked <strong className="text-white">{result.listing_status}</strong> and removed from the site and WhatsApp bot.
+          </p>
+          <p className="mt-2 text-soft text-sm">
+            {result.had_payfast_subscription
+              ? <>Your PayFast subscription was cancelled — <strong className="text-white">no further monthly charge will be taken</strong>.{result.payfast_status ? <> PayFast now reports this subscription as “{result.payfast_status}”.</> : null}</>
+              : <>No active monthly billing was running, so nothing further will be charged.</>}
+          </p>
+          {result.cancel_error && <p className="mt-2 text-xs text-gold-bright">Note: we’ve taken your listing down; if you receive any further charge, email {`hello@townconnect.co.za`} and we will refund and resolve it.</p>}
+          <BackLink listing={{ id: listingId } as Listing} />
+        </Section>
+      )}
+
+      {!result && !stopped && (
+        <Section title="Cancel billing">
+          <p className="text-soft text-sm mb-4">
+            You can stop billing at any time. Either option below <strong className="text-white">immediately cancels your monthly
+            subscription</strong> so no further payment is taken, and removes the listing.
+          </p>
+          {err && <p className="mb-3 text-sm text-red-300">{err}</p>}
+          {confirm === '' && (
+            <div className="flex flex-wrap gap-3">
+              <button className="btn-gold" onClick={() => setConfirm('sold')}>Mark as sold</button>
+              <button className="btn-ghost" onClick={() => setConfirm('remove')}>Remove listing</button>
+            </div>
+          )}
+          {confirm !== '' && (
+            <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+              <p className="text-white text-sm mb-3">
+                {confirm === 'sold' ? 'Mark this property as sold' : 'Remove this listing'} and cancel the monthly subscription? This stops all future billing.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button className="btn-gold disabled:opacity-50" disabled={busy} onClick={() => doCancel(confirm)}>
+                  {busy ? 'Cancelling…' : 'Yes, cancel billing'}
+                </button>
+                <button className="btn-ghost" disabled={busy} onClick={() => setConfirm('')}>Keep my listing</button>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
+      <div className="mt-10 text-sm"><Link to="/" className="text-teal-bright hover:text-white">← Home</Link></div>
+    </Wrap>
   );
 }
 
