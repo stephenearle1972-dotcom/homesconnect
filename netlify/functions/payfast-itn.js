@@ -2,12 +2,22 @@
 // Validates the ITN, then flips the listing row in the Google Sheet from
 // status="pending_payment" to status="active".
 
-import { getAllValues, updateCell } from './_lib/sheets.js';
+import { getAllValues, getTabValues, updateCell } from './_lib/sheets.js';
 import { sendEmail } from './_lib/email.js';
 import { getMaoListing, COMPANY, ADDON, SITE_URL, maoAllowed } from './_lib/mao.js';
 import { PAYFAST, signPairs } from './_lib/payfast.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
+// Deploy-context data isolation: sandbox/preview deploys read + activate listings in
+// HOMESCONNECT_LISTINGS_TAB; unset (production) → first tab (original behaviour).
+const LISTINGS_TAB = process.env.HOMESCONNECT_LISTINGS_TAB || '';
+
+// Resolve the listings tab + its rows. Mirrors getAllValues' {tab, values} shape so
+// callers can pass `tab` straight to updateCell.
+async function readListings(range = 'A1:Z2000') {
+  if (LISTINGS_TAB) return { tab: LISTINGS_TAB, values: await getTabValues(SHEET_ID, LISTINGS_TAB, range) };
+  return getAllValues(SHEET_ID, range);
+}
 
 const TIER_AMOUNT = { basic: 99, enhanced: 249, agency: 999 };
 // "Make an Offer" add-on once-off fee (custom_str1 === 'mao_enable').
@@ -30,7 +40,7 @@ function parseFormBody(body) {
 // with, then flip status -> active. Throws on any mismatch so the caller can log it
 // and leave the listing unpublished.
 async function flipRowToActive(listingId, amountGross) {
-  const { tab, values: rows } = await getAllValues(SHEET_ID);
+  const { tab, values: rows } = await readListings();
   if (!rows.length) throw new Error('Sheet empty');
   const headers = rows[0];
   const idCol = headers.indexOf('id');
@@ -96,7 +106,7 @@ async function emailInvoice(listingId, amountGross, pfPaymentId) {
 async function enableMakeAnOffer(listingId, amountGross) {
   // Public gate: never enable a real listing while gated (even on a valid ITN).
   if (!maoAllowed(listingId)) throw new Error(`make_an_offer gated — not enabling ${listingId}`);
-  const { tab, values: rows } = await getAllValues(SHEET_ID, 'A1:AZ5000');
+  const { tab, values: rows } = await readListings('A1:AZ5000');
   if (!rows.length) throw new Error('Sheet empty');
   const headers = rows[0];
   const idCol = headers.indexOf('id');

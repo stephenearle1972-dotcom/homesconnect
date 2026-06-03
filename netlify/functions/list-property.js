@@ -5,10 +5,14 @@
 // 4. Builds a signed PayFast param set
 // 5. Returns the PayFast post URL + params so the client can auto-submit a form
 
-import { appendRow as sheetsAppendRow } from './_lib/sheets.js';
+import { appendRow as sheetsAppendRow, appendRowToTab } from './_lib/sheets.js';
 import { PAYFAST, signParams, siteBaseUrl } from './_lib/payfast.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
+// Deploy-context data isolation: when HOMESCONNECT_LISTINGS_TAB is set (sandbox /
+// preview deploys), listings are written to that tab instead of the first tab.
+// Unset (production) → first tab, i.e. byte-for-byte the original behaviour.
+const LISTINGS_TAB = process.env.HOMESCONNECT_LISTINGS_TAB || '';
 
 const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
 const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced', agency: 'Agency' };
@@ -129,7 +133,9 @@ function buildRow({ id, input }) {
 }
 
 async function appendRow(row) {
-  return sheetsAppendRow(SHEET_ID, row);
+  return LISTINGS_TAB
+    ? appendRowToTab(SHEET_ID, LISTINGS_TAB, row)
+    : sheetsAppendRow(SHEET_ID, row);
 }
 
 export const handler = async (event) => {
