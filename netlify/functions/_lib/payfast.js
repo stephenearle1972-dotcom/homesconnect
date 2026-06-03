@@ -13,9 +13,14 @@
 // order (the order they are posted), NOT alphabetically. Sorting was the original
 // live bug — never reintroduce it. The passphrase is appended to the signed string
 // ONLY when one is configured; PayFast's own rule is "append iff a passphrase is set
-// on the account", which is the same for live and sandbox. The public sandbox test
-// merchant has no passphrase, so PAYFAST_SANDBOX_PASSPHRASE is optional and unset by
-// default (nothing is appended) — which is what the sandbox expects.
+// on the account", which is the same for live and sandbox.
+//
+// IMPORTANT: PayFast's public sandbox test merchant (10000100 / 46f0cd694581a) DOES
+// have a passphrase on the account — `jt7NOE43FZPn` per PayFast's current docs. So in
+// sandbox we MUST append it (PAYFAST_SANDBOX_PASSPHRASE defaults to that value). Omitting
+// it was the cause of the "Generated signature does not match submitted signature" 400 at
+// /eng/process. Override PAYFAST_SANDBOX_PASSPHRASE only if you use your own sandbox
+// account with a different passphrase.
 
 import crypto from 'node:crypto';
 
@@ -34,16 +39,17 @@ const LIVE = {
 };
 
 // Sandbox gateway + sandbox merchant. Defaults to PayFast's public test merchant
-// (10000100 / 46f0cd694581a) so sandbox works out of the box; override per-deploy
-// with PAYFAST_SANDBOX_* if you have your own sandbox account. No passphrase by
-// default (the public test merchant has none).
+// (10000100 / 46f0cd694581a / passphrase jt7NOE43FZPn) so sandbox works out of the
+// box; override per-deploy with PAYFAST_SANDBOX_* if you have your own sandbox account.
+// The public test merchant's documented passphrase MUST be appended to the signature
+// or the sandbox rejects it with a signature mismatch.
 const SANDBOX = {
   mode: 'sandbox',
   processUrl: 'https://sandbox.payfast.co.za/eng/process',
   validateUrl: 'https://sandbox.payfast.co.za/eng/query/validate',
   merchantId: process.env.PAYFAST_SANDBOX_MERCHANT_ID || '10000100',
   merchantKey: process.env.PAYFAST_SANDBOX_MERCHANT_KEY || '46f0cd694581a',
-  passphrase: process.env.PAYFAST_SANDBOX_PASSPHRASE || '',
+  passphrase: process.env.PAYFAST_SANDBOX_PASSPHRASE || 'jt7NOE43FZPn',
 };
 
 export const PAYFAST = MODE === 'sandbox' ? SANDBOX : LIVE;
