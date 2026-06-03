@@ -4,9 +4,9 @@
 // switched on by the ITN after a valid payment. (A demo listing can be enabled
 // without payment via scripts/enable-mao.mjs.)
 import {
-  getListingById, getMaoListing, upsertMaoListing, genToken, nowIso, json, CORS, ADDON_AMOUNT, SITE_URL, maoAllowed,
+  getListingById, getMaoListing, upsertMaoListing, genToken, nowIso, json, CORS, ADDON_AMOUNT, maoAllowed,
 } from './_lib/mao.js';
-import { PAYFAST, signParams } from './_lib/payfast.js';
+import { PAYFAST, signParams, siteBaseUrl } from './_lib/payfast.js';
 
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
@@ -76,12 +76,14 @@ export const handler = async (event) => {
   }
 
   // Build signed PayFast params for the once-off add-on fee.
+  // Callbacks must return to THIS deploy (production = live URL; preview = preview URL).
+  const siteUrl = siteBaseUrl(event);
   const params = {
     merchant_id: PAYFAST.merchantId,
     merchant_key: PAYFAST.merchantKey,
-    return_url: `${SITE_URL}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enabled=1`,
-    cancel_url: `${SITE_URL}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enable_cancelled=1`,
-    notify_url: `${SITE_URL}/.netlify/functions/payfast-itn`,
+    return_url: `${siteUrl}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enabled=1`,
+    cancel_url: `${siteUrl}/seller?listing=${encodeURIComponent(listing.id)}&token=${encodeURIComponent(token)}&enable_cancelled=1`,
+    notify_url: `${siteUrl}/.netlify/functions/payfast-itn`,
     name_first: (disclosure.sellerName.split(' ')[0] || 'Seller'),
     name_last: (disclosure.sellerName.split(' ').slice(1).join(' ') || ''),
     email_address: sellerEmail,

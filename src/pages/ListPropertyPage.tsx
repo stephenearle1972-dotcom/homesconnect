@@ -6,8 +6,8 @@ const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'home
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
 
 const PROVINCES = [
-  'Gauteng','Western Cape','KwaZulu-Natal','Eastern Cape',
-  'Limpopo','Mpumalanga','Free State','North West','Northern Cape',
+  'Eastern Cape','Free State','Gauteng','KwaZulu-Natal','Limpopo',
+  'Mpumalanga','Northern Cape','North West','Western Cape',
 ];
 
 const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
@@ -85,6 +85,7 @@ export default function ListPropertyPage() {
   // Separate, additional attestation: right to ADVERTISE the property (distinct from
   // the private-listing terms checkbox, and from the Make-an-Offer enable declaration).
   const [ownershipOk, setOwnershipOk] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -174,6 +175,7 @@ export default function ListPropertyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setAttemptedSubmit(true);
     if (!validate()) {
       const first = document.querySelector('[data-error="true"]') as HTMLElement | null;
       if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -458,7 +460,7 @@ export default function ListPropertyPage() {
           >
             {submitting ? 'Redirecting to PayFast…' : `Pay R${amount} & List My Property`}
           </button>
-          {isPrivate && (!disclaimerOk || !ownershipOk) && (
+          {isPrivate && attemptedSubmit && (!disclaimerOk || !ownershipOk) && (
             <p className="mt-3 text-xs text-gold-bright text-center">Tick both private-listing confirmations above to continue.</p>
           )}
           <p className="mt-3 text-xs text-faint text-center">
