@@ -11,6 +11,9 @@ const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 // Deploy-context data isolation: sandbox/preview deploys read + activate listings in
 // HOMESCONNECT_LISTINGS_TAB; unset (production) → first tab (original behaviour).
 const LISTINGS_TAB = process.env.HOMESCONNECT_LISTINGS_TAB || '';
+// Where the "new listing" business notification goes. Overridable in Netlify without
+// a code change; defaults to the operator inbox.
+const NOTIFY_EMAIL = process.env.HOMESCONNECT_NOTIFY_EMAIL || 'hello@townconnect.co.za';
 
 // Resolve the listings tab + its rows. Mirrors getAllValues' {tab, values} shape so
 // callers can pass `tab` straight to updateCell.
@@ -40,7 +43,8 @@ function parseFormBody(body) {
 // with, then flip status -> active. Throws on any mismatch so the caller can log it
 // and leave the listing unpublished.
 async function flipRowToActive(listingId, amountGross) {
-  const { tab, values: rows } = await readListings();
+  // Read past column Z so the record includes agent_email (AG) etc. for the emails.
+  const { tab, values: rows } = await readListings('A1:AZ2000');
   if (!rows.length) throw new Error('Sheet empty');
   const headers = rows[0];
   const idCol = headers.indexOf('id');
@@ -64,7 +68,79 @@ async function flipRowToActive(listingId, amountGross) {
 
   const a1Cell = `${colLetter(statusCol)}${rowIdx + 1}`;
   await updateCell(SHEET_ID, tab, a1Cell, 'active');
-  return { rowIdx, cellA1: `${tab}!${a1Cell}`, tier, paid };
+  // Build a header->value record of the activated row for the notification emails.
+  const record = {};
+  headers.forEach((h, i) => { record[h] = rows[rowIdx][i] || ''; });
+  return { rowIdx, cellA1: `${tab}!${a1Cell}`, tier, paid, record };
+}
+
+// Best-effort notification emails sent AFTER a listing is activated. Two emails:
+//  1) business notification to the operator, 2) confirmation to the lister.
+// Never throws — a mail hiccup must not roll back a paid, activated listing.
+async function sendListingEmails(listingId, record, itnMap, paid) {
+  const r = record || {};
+  const listerEmail = (r.agent_email || itnMap.email_address || '').trim();
+  const name = r.agent_name || [itnMap.name_first, itnMap.name_last].filter(Boolean).join(' ') || 'the lister';
+  const location = [r.suburb, r.city, r.province].filter(Boolean).join(', ');
+  const price = r.price_display || (r.price ? `R ${Number(r.price).toLocaleString('en-ZA')}` : `R ${paid}`);
+
+  // 1) Business notification
+  const bizLines = [
+    `A new HomesConnect listing has been paid and is now live.`,
+    ``,
+    `Reference:     ${listingId}`,
+    `Tier:          ${r.tier || ''}`,
+    `Type:          ${r.type === 'rent' ? 'To Let' : 'For Sale'}`,
+    `Property type: ${r.property_type || ''}`,
+    `Location:      ${location}`,
+    `Bedrooms:      ${r.bedrooms || '0'}`,
+    `Bathrooms:     ${r.bathrooms || '0'}`,
+    `Garages:       ${r.garage || '0'}`,
+    `Price:         ${price}`,
+    ``,
+    `Listed by:     ${name}`,
+    `Phone:         ${r.agent_phone || itnMap.cell_number || ''}`,
+    `Email:         ${listerEmail || '(not provided)'}`,
+    r.seller_type ? `Seller type:   ${r.seller_type}` : ``,
+    ``,
+    `Title: ${r.title || ''}`,
+  ].filter((l) => l !== undefined);
+  const biz = await sendEmail({
+    to: NOTIFY_EMAIL,
+    subject: `New HomesConnect listing — ${listingId}`,
+    text: bizLines.join('\n'),
+    replyTo: listerEmail || undefined,
+  });
+  if (!biz.ok) console.error('[payfast-itn] business notification failed:', biz.error);
+
+  // 2) Lister confirmation
+  if (listerEmail) {
+    const firstName = (name || '').split(' ')[0] || 'there';
+    const confLines = [
+      `Hi ${firstName},`,
+      ``,
+      `Thank you — your HomesConnect listing has been received and your payment confirmed.`,
+      ``,
+      `Listing reference: ${listingId}`,
+      r.title ? `Property: ${r.title}` : ``,
+      location ? `Location: ${location}` : ``,
+      ``,
+      `Your listing will appear on the HomesConnect website and WhatsApp bot within 48 hours.`,
+      `If anything needs changing, reply to this email and we'll help.`,
+      ``,
+      `Kind regards,`,
+      `The HomesConnect team`,
+      `${COMPANY.website}`,
+    ].filter((l) => l !== undefined);
+    const conf = await sendEmail({
+      to: listerEmail,
+      subject: `Your HomesConnect listing has been submitted — ${listingId}`,
+      text: confLines.join('\n'),
+    });
+    if (!conf.ok) console.error('[payfast-itn] lister confirmation failed:', conf.error);
+  } else {
+    console.warn('[payfast-itn] no lister email for', listingId, '— confirmation skipped');
+  }
 }
 
 // ECTA transaction record: email the seller a tax-invoice-style record of the add-on.
@@ -179,6 +255,10 @@ export const handler = async (event) => {
     } else {
       const result = await flipRowToActive(map.m_payment_id, map.amount_gross);
       console.log('[payfast-itn] flipped to active', map.m_payment_id, result.cellA1, `tier=${result.tier} paid=R${result.paid}`, 'in', (Date.now() - t0) + 'ms');
+      // Notify the business + confirm to the lister. Best-effort: a mail failure must
+      // never undo the activation above.
+      try { await sendListingEmails(map.m_payment_id, result.record, map, result.paid); }
+      catch (e) { console.error('[payfast-itn] listing emails failed:', e.message); }
     }
   } catch (err) {
     console.error('[payfast-itn] not applied:', err.message);

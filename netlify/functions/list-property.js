@@ -26,15 +26,17 @@ const CORS = {
 function bad(status, body) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function ok(body) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 
-// Header order in the sheet (must match the header row, A..AF). The final 6
-// columns (AA..AF) were added for the private-seller path. Append is positional,
-// so this array order must mirror the sheet exactly.
+// Header order in the sheet (must match the header row, A..AG). The columns AA..AF
+// were added for the private-seller path; agent_email (AG) was added so the paid-
+// listing confirmation email has a persisted recipient. Append is positional, so
+// this array order must mirror the sheet header exactly — new columns at the END only.
 const SHEET_COLS = [
   'id','type','status','tier','title','price','price_display','bedrooms','bathrooms',
   'garage','garden','pool','pet_friendly','property_type','suburb','city','province',
   'description','imageUrl','image2','image3','agent_name','agent_phone','agent_agency',
   'featured','date_listed',
   'seller_type','disclaimer_accepted','disclaimer_accepted_at','whatsapp','size_sqm','address',
+  'agent_email',
 ];
 
 function formatRand(n) {
@@ -128,6 +130,8 @@ function buildRow({ id, input }) {
     whatsapp,
     size_sqm: input.size ? String(Math.round(Number(input.size)) || '') : '',
     address: (input.address || '').trim(),
+    // Persisted so payfast-itn can email the lister a confirmation on activation.
+    agent_email: (input.agent_email || '').trim(),
   };
   return SHEET_COLS.map((c) => map[c] ?? '');
 }
