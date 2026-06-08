@@ -96,12 +96,12 @@ Then in the Netlify console for the new `homesconnect` site:
    | `LISTINGS_CSV_URL` | *(same value — used by the on-site chat function)* |
    | `GEMINI_API_KEY` | *(same value you already use on vaalwaterconnect)* |
    | `GEMINI_MODEL` | `gemini-2.5-flash` *(optional)* |
-   | `SITE_URL_HOMESCONNECT` | `https://homesconnect.netlify.app` *(update later if you add a custom domain)* |
+   | `SITE_URL_HOMESCONNECT` | `https://homesconnect.co.za` |
 
 3. Trigger a fresh deploy from **Deploys → Trigger deploy → Deploy site** (env
    vars only take effect on the next build).
 
-Live URL once deployed: `https://homesconnect.netlify.app`
+Live URL once deployed: `https://homesconnect.co.za`
 
 ---
 
@@ -116,7 +116,7 @@ imported and routed in `whatsapp.js`. You just need to flip env vars and redeplo
 |-----|-------|-------|
 | `PHONE_MAP_962273166980427` | `homesconnect` | **Was `jeffreysbay`.** This is the switch. |
 | `BUSINESS_CSV_URL_HOMESCONNECT` | `https://docs.google.com/spreadsheets/d/e/2PACX-1vSSirf3AzlKaOlve0OyRkDpZh1H3zcl5y94lJvhLl3pJ1gUO1bd-mkBG2tGDSYmR-wQwRFspd4jMaVp/pub?output=csv` | Same sheet as the website |
-| `SITE_URL_HOMESCONNECT` | `https://homesconnect.netlify.app` | |
+| `SITE_URL_HOMESCONNECT` | `https://homesconnect.co.za` | |
 | `WHATSAPP_DISPLAY_HOMESCONNECT` | `+27 76 795 9872` | |
 
 You **don't** need to add a separate `WHATSAPP_TOKEN_HOMESCONNECT` — the portfolio
@@ -166,7 +166,7 @@ hasn't redeployed yet — wait or retrigger.
 
 ### 5c — Test the website
 
-Open `https://homesconnect.netlify.app` and verify:
+Open `https://homesconnect.co.za` and verify:
 
 - [ ] Hero loads with property background
 - [ ] Pricing shows R99 / R249 / R999 (with 15% VAT note)
@@ -186,7 +186,7 @@ When you register `homesconnect.co.za`:
 1. Netlify → `homesconnect` site → Domain settings → Add custom domain.
 2. Point DNS A record + www CNAME per Netlify's instructions.
 3. Update `SITE_URL_HOMESCONNECT` on **vaalwaterconnect** Netlify site
-   from `https://homesconnect.netlify.app` to `https://homesconnect.co.za`.
+   to `https://homesconnect.co.za`.
 4. Update `SITE_URL_HOMESCONNECT` on **homesconnect** Netlify site too.
 5. Retrigger both deploys.
 

@@ -21,7 +21,7 @@ export const COMPANY = {
   address: 'Registered office — full physical address available on request to hello@townconnect.co.za',
   phone: '+27 68 898 6081',
   email: 'hello@townconnect.co.za',
-  website: 'https://homesconnect-za.netlify.app',
+  website: 'https://homesconnect.co.za',
 };
 export const ADDON = {
   name: 'Make an Offer add-on',

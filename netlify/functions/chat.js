@@ -5,7 +5,7 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const CSV_URL = process.env.LISTINGS_CSV_URL || process.env.VITE_LISTINGS_CSV_URL || '';
-const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect.netlify.app';
+const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect.co.za';
 const WA_LINK = 'https://wa.me/27767959872';
 
 const CORS = {

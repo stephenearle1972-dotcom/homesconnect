@@ -54,7 +54,7 @@ const SANDBOX = {
 
 export const PAYFAST = MODE === 'sandbox' ? SANDBOX : LIVE;
 
-const DEFAULT_SITE_URL = 'https://homesconnect-za.netlify.app';
+const DEFAULT_SITE_URL = 'https://homesconnect.co.za';
 
 // Base URL for PayFast return / cancel / notify (ITN) callbacks.
 //

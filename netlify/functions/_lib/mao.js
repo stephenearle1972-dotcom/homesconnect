@@ -14,7 +14,7 @@ export const LISTINGS_TAB = 'HomesConnect Listings';
 export const OFFERS_TAB = 'Offers';
 export const OTP_TAB = 'OtpChallenges';
 export const ADDON_AMOUNT = process.env.MAO_ADDON_AMOUNT || '299.00';
-export const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
+export const SITE_URL = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect.co.za';
 
 // Public gate (reversible): when MAO_PUBLIC_ENABLED === 'false', the public may NOT
 // enable/buy/use Make an Offer on a REAL listing. Demo listings (HCDEMO*, or any id
@@ -38,7 +38,7 @@ export const COMPANY = {
   address: 'Registered office — full physical address available on request to hello@townconnect.co.za',
   phone: '+27 68 898 6081',
   email: 'hello@townconnect.co.za',
-  website: 'https://homesconnect-za.netlify.app',
+  website: 'https://homesconnect.co.za',
 };
 export const ADDON = {
   name: 'Make an Offer add-on',

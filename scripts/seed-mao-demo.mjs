@@ -48,7 +48,7 @@ const consent = await import('../netlify/functions/mao-buyer-consent.js');
 const handoff = await consent.handler({ httpMethod: 'POST', body: JSON.stringify({ offer: 'OFDEMOB', t: ct, consent: true }) });
 console.log('  buyer consent + handoff:', handoff.statusCode, 'emailed:', JSON.parse(handoff.body).handoff_emailed);
 
-const SITE = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect-za.netlify.app';
+const SITE = process.env.SITE_URL_HOMESCONNECT || 'https://homesconnect.co.za';
 console.log('\n=== DEMO READY ===');
 console.log('Listing (buyer view):  ' + SITE + '/listing/' + LISTING_ID);
 console.log('Make an Offer (buyer): ' + SITE + '/make-offer?listing=' + LISTING_ID);
