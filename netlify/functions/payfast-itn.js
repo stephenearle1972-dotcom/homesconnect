@@ -83,11 +83,14 @@ async function sendListingEmails(listingId, record, itnMap, paid) {
   const name = r.agent_name || [itnMap.name_first, itnMap.name_last].filter(Boolean).join(' ') || 'the lister';
   const location = [r.suburb, r.city, r.province].filter(Boolean).join(', ');
   const price = r.price_display || (r.price ? `R ${Number(r.price).toLocaleString('en-ZA')}` : `R ${paid}`);
+  // Blank moderation = grandfathered approved. Only 'flagged' holds the listing.
+  const isFlagged = (r.moderation || '').trim().toLowerCase() === 'flagged';
+  const images = [r.imageUrl, r.image2, r.image3].filter(Boolean);
 
-  // 1) Business notification
-  const bizLines = [
-    `A new HomesConnect listing has been paid and is now live.`,
-    ``,
+  // 1) Operator email. Two shapes share the listing facts below:
+  //    - approved → "now live" notification
+  //    - flagged  → "HELD FOR REVIEW" alert with image URLs + approve/reject steps
+  const factLines = [
     `Reference:     ${listingId}`,
     `Tier:          ${r.tier || ''}`,
     `Type:          ${r.type === 'rent' ? 'To Let' : 'For Sale'}`,
@@ -105,13 +108,42 @@ async function sendListingEmails(listingId, record, itnMap, paid) {
     ``,
     `Title: ${r.title || ''}`,
   ].filter((l) => l !== undefined);
+
+  let bizSubject;
+  let bizLines;
+  if (isFlagged) {
+    bizSubject = `⚠️ HomesConnect listing HELD for review — ${listingId}`;
+    bizLines = [
+      `A paid HomesConnect listing has been HELD because its image(s) were flagged by`,
+      `automated moderation. It is NOT visible on the website or WhatsApp bot.`,
+      ``,
+      `Please review the image(s) below and decide:`,
+      `  • To PUBLISH it: open the listings sheet, find row ${listingId}, and set the`,
+      `    "moderation" cell to:  approved`,
+      `  • To KILL it: set the "moderation" cell to:  rejected`,
+      `(Either change takes effect on the next site/bot refresh — no redeploy needed.)`,
+      ``,
+      `Image(s) to review:`,
+      ...(images.length ? images.map((u, i) => `  ${i + 1}. ${u}`) : ['  (no images on the listing)']),
+      ``,
+      `— Listing details —`,
+      ...factLines,
+    ];
+  } else {
+    bizSubject = `New HomesConnect listing — ${listingId}`;
+    bizLines = [
+      `A new HomesConnect listing has been paid and is now live.`,
+      ``,
+      ...factLines,
+    ];
+  }
   const biz = await sendEmail({
     to: NOTIFY_EMAIL,
-    subject: `New HomesConnect listing — ${listingId}`,
+    subject: bizSubject,
     text: bizLines.join('\n'),
     replyTo: listerEmail || undefined,
   });
-  if (!biz.ok) console.error('[payfast-itn] business notification failed:', biz.error);
+  if (!biz.ok) console.error('[payfast-itn] operator email failed:', biz.error);
 
   // 2) Lister confirmation
   if (listerEmail) {

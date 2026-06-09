@@ -48,7 +48,18 @@ function mapRow(row: Record<string, string>): Listing {
     sizeSqm: toInt(row.size_sqm),
     address: row.address || '',
     makeAnOfferEnabled: toBool(row.make_an_offer_enabled),
+    // Blank/missing = grandfathered as approved (seed + pre-moderation listings).
+    moderation: (row.moderation || '').trim().toLowerCase(),
   };
+}
+
+// A listing is publicly visible only if it is active AND its image moderation
+// passed. Blank moderation is treated as approved so the existing catalogue and
+// any pre-moderation rows are unaffected; only flagged/rejected rows are hidden.
+function isPublic(l: Listing): boolean {
+  const statusOk = !l.status || l.status === 'active';
+  const modOk = !l.moderation || l.moderation === 'approved';
+  return statusOk && modOk;
 }
 
 let cache: Promise<Listing[]> | null = null;
@@ -67,9 +78,9 @@ export function loadListings(): Promise<Listing[]> {
       const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
       const rows = (parsed.data || []).filter((r) => r.id);
       if (!rows.length) return SEED_LISTINGS;
-      // Only show fully-active listings. Pending-payment rows from the listing
-      // form, archived rows, etc. stay hidden until the ITN webhook flips them.
-      return rows.map(mapRow).filter((l) => !l.status || l.status === 'active');
+      // Only show fully-active, moderation-approved listings. Pending-payment rows
+      // (intake form pre-ITN), archived rows, and flagged/rejected images stay hidden.
+      return rows.map(mapRow).filter(isPublic);
     } catch (err) {
       console.warn('[HomesConnect] CSV load failed, using seed data:', err);
       return SEED_LISTINGS;

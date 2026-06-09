@@ -7,6 +7,7 @@
 
 import { appendRow as sheetsAppendRow, appendRowToTab } from './_lib/sheets.js';
 import { PAYFAST, signParams, siteBaseUrl } from './_lib/payfast.js';
+import { moderateImages } from './_lib/vision.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 // Deploy-context data isolation: when HOMESCONNECT_LISTINGS_TAB is set (sandbox /
@@ -37,6 +38,10 @@ const SHEET_COLS = [
   'featured','date_listed',
   'seller_type','disclaimer_accepted','disclaimer_accepted_at','whatsapp','size_sqm','address',
   'agent_email',
+  // Image-moderation gate (SafeSearch). Appended at the END per the column rules.
+  // Values: approved | flagged | rejected. A clean scan publishes instantly; a flag
+  // or any scan error holds the listing (set below before the row is written).
+  'moderation',
 ];
 
 function formatRand(n) {
@@ -82,7 +87,7 @@ function validate(input) {
   return Object.keys(errors).length ? errors : null;
 }
 
-function buildRow({ id, input }) {
+function buildRow({ id, input, moderation }) {
   const images = Array.isArray(input.images) ? input.images : [];
   const priceNum = Math.round(Number(input.price));
   const priceDisplay = input.type === 'rent'
@@ -132,6 +137,8 @@ function buildRow({ id, input }) {
     address: (input.address || '').trim(),
     // Persisted so payfast-itn can email the lister a confirmation on activation.
     agent_email: (input.agent_email || '').trim(),
+    // 'approved' (clean) or 'flagged' (unsafe / scan error) — decided before write.
+    moderation,
   };
   return SHEET_COLS.map((c) => map[c] ?? '');
 }
@@ -156,9 +163,24 @@ export const handler = async (event) => {
   // 1. Generate listing ID
   const id = 'HC' + Math.floor(Date.now() / 1000);
 
+  // 1b. Moderate every image BEFORE the row is written (synchronous SafeSearch scan,
+  // so clean listings still publish instantly). moderateImages is itself fail-safe —
+  // it returns 'flagged' on any unsafe image OR any scan error/outage, never throws —
+  // but we belt-and-braces wrap it so an unexpected throw still fail-safes to flagged.
+  let moderation = 'flagged';
+  try {
+    const result = await moderateImages(Array.isArray(body.images) ? body.images : []);
+    moderation = result.moderation === 'approved' ? 'approved' : 'flagged';
+    console.log('[list-property] moderation', id, moderation, result.reason,
+      JSON.stringify(result.perImage.map((p) => ({ r: p.result, c: p.categories }))));
+  } catch (err) {
+    console.error('[list-property] moderation scan threw — fail-safe to flagged:', err.message);
+    moderation = 'flagged';
+  }
+
   // 2. Append pending row
   try {
-    const row = buildRow({ id, input: body });
+    const row = buildRow({ id, input: body, moderation });
     await appendRow(row);
   } catch (err) {
     console.error('[list-property] Sheet append failed:', err.message);
