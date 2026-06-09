@@ -118,6 +118,17 @@ export async function updateValues(sheetId, rangeWithTab, values2d) {
   );
 }
 
+// Raw spreadsheets.batchUpdate (structural edits — add columns, etc.).
+export async function batchUpdate(sheetId, requests) {
+  return sheetsApi('POST', `/${sheetId}:batchUpdate`, { requests });
+}
+
+// Return [{ title, sheetId }] for every tab.
+export async function listTabs(sheetId) {
+  const meta = await sheetsApi('GET', `/${sheetId}?fields=sheets.properties.title,sheets.properties.sheetId`);
+  return (meta.sheets || []).map((s) => ({ title: s.properties.title, sheetId: s.properties.sheetId }));
+}
+
 export async function updateCell(sheetId, tab, a1Cell, value) {
   return sheetsApi(
     'PUT',

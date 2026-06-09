@@ -17,10 +17,10 @@ const IMG = {
 };
 
 function entry(
-  p: Omit<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address' | 'makeAnOfferEnabled'> &
-    Partial<Pick<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address' | 'makeAnOfferEnabled'>>
+  p: Omit<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address' | 'makeAnOfferEnabled' | 'moderation'> &
+    Partial<Pick<Listing, 'status' | 'sellerType' | 'whatsapp' | 'sizeSqm' | 'address' | 'makeAnOfferEnabled' | 'moderation'>>
 ): Listing {
-  return { status: 'active', sellerType: 'agent', whatsapp: '', sizeSqm: 0, address: '', makeAnOfferEnabled: false, ...p };
+  return { status: 'active', sellerType: 'agent', whatsapp: '', sizeSqm: 0, address: '', makeAnOfferEnabled: false, moderation: 'approved', ...p };
 }
 
 export const SEED_LISTINGS: Listing[] = [

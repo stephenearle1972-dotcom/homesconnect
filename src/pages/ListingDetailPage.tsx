@@ -137,12 +137,91 @@ export default function ListingDetailPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Listing ID</p>
             <p className="text-soft text-sm">{listing.id}</p>
           </div>
+          <ReportListing listingId={listing.id} title={listing.title} />
           {isPrivate && maoAllowed(listing.id) && (
             <div className="text-center">
               <Link to={`/seller?listing=${listing.id}`} className="text-xs text-faint hover:text-teal-bright">Are you the seller? Manage this listing →</Link>
             </div>
           )}
         </aside>
+      </div>
+    </div>
+  );
+}
+
+// Public "Report listing" control. Posts to a function that emails the operator.
+// It never hides the listing client-side — a single anonymous report must not be
+// able to unpublish a paid listing; the operator reviews and decides.
+function ReportListing({ listingId, title }: { listingId: string; title: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  async function submit() {
+    setState('sending');
+    try {
+      await fetch('/.netlify/functions/report-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: listingId, title, reason }),
+      });
+    } catch {
+      /* best-effort — show the same thank-you either way */
+    }
+    setState('sent');
+  }
+
+  if (state === 'sent') {
+    return (
+      <p className="text-center text-xs text-faint">
+        Thanks — our team will review this listing.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-xs text-faint hover:text-red-300 transition-colors"
+        >
+          ⚑ Report this listing
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card-soft rounded-2xl p-5">
+      <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Report this listing</p>
+      <p className="text-soft text-xs mb-3">
+        Tell us what's wrong (inappropriate images, misleading or unlawful content). Optional.
+      </p>
+      <textarea
+        rows={3}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Reason (optional)"
+        className="input resize-none text-sm"
+      />
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={state === 'sending'}
+          className="btn-ghost flex-1 text-sm disabled:opacity-50"
+        >
+          {state === 'sending' ? 'Sending…' : 'Submit report'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs text-faint hover:text-white px-3"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );

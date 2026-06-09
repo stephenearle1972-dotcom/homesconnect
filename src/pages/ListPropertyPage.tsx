@@ -22,6 +22,17 @@ const FSBO_DISCLAIMER =
   'sale. All negotiations and the sale itself are directly between the buyer and the ' +
   'seller. By listing, you confirm you are entitled to sell or let this property.';
 
+// PLACEHOLDER WORDING — Stephen to review/refine with legal. This is the content /
+// takedown clause shown to every lister (agent and private) and accepted via the
+// checkbox below. Not final legal text.
+const CONTENT_TERMS =
+  'Listings and images are subject to review. You may upload only content you own ' +
+  'or are authorised to use, depicting the actual property advertised. Inappropriate, ' +
+  'explicit, unlawful, misleading or fraudulent content is prohibited. HomesConnect ' +
+  'screens uploaded images automatically and may hold, remove, or refuse any listing ' +
+  'at its discretion, and may withhold or forfeit the listing fee where these terms ' +
+  'are breached. Reported listings may be reviewed and removed.';
+
 // Tier id, price and photo limit are identical for both seller types. Only the
 // top tier's NAME differs: agents see "Agency Package", private sellers see "Premium"
 // (an individual is not an agency).
@@ -85,6 +96,7 @@ export default function ListPropertyPage() {
   // Separate, additional attestation: right to ADVERTISE the property (distinct from
   // the private-listing terms checkbox, and from the Make-an-Offer enable declaration).
   const [ownershipOk, setOwnershipOk] = useState(false);
+  const [contentTermsOk, setContentTermsOk] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +118,7 @@ export default function ListPropertyPage() {
     setErrors({});
     setDisclaimerOk(false);
     setOwnershipOk(false);
+    setContentTermsOk(false);
     // Reflect the choice in the URL so the page is shareable / bookmarkable.
     const p = new URLSearchParams(params);
     if (next === 'private') p.set('seller', 'private'); else p.delete('seller');
@@ -169,6 +182,7 @@ export default function ListPropertyPage() {
     if (images.length === 0) errs.images = `Add at least 1 photo (up to ${photoLimit})`;
     if (isPrivate && !disclaimerOk) errs.disclaimer = 'Please accept the private-listing terms to continue';
     if (isPrivate && !ownershipOk) errs.ownership_attested = 'Please confirm you own or are authorised to list this property';
+    if (!contentTermsOk) errs.contentTerms = 'Please accept the listing content terms to continue';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -450,18 +464,45 @@ export default function ListPropertyPage() {
           </FormSection>
         )}
 
+        {/* Content & takedown terms — shown to ALL listers (placeholder wording). */}
+        <FormSection title={isPrivate ? '6. Listing content terms' : '5. Listing content terms'}>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-soft text-sm leading-relaxed">
+            {CONTENT_TERMS}
+          </div>
+          <label
+            data-error={errors.contentTerms ? 'true' : undefined}
+            className="mt-4 flex items-start gap-3 cursor-pointer select-none"
+          >
+            <input
+              type="checkbox"
+              checked={contentTermsOk}
+              onChange={(e) => {
+                setContentTermsOk(e.target.checked);
+                if (errors.contentTerms) setErrors((prev) => { const n = { ...prev }; delete n.contentTerms; return n; });
+              }}
+              className="mt-1 h-5 w-5 accent-teal flex-shrink-0"
+            />
+            <span className="text-sm text-white">
+              I have read and accept the listing content terms above, and confirm the
+              images I upload are mine to use and depict the actual property listed.
+              <span className="text-gold-bright"> *</span>
+            </span>
+          </label>
+          {errors.contentTerms && <p className="mt-2 text-sm text-red-300">{errors.contentTerms}</p>}
+        </FormSection>
+
         {/* Submit */}
         <div className="card-soft rounded-2xl p-6">
           {errors.form && <p className="text-sm text-red-300 mb-4">{errors.form}</p>}
           <button
             type="submit"
-            disabled={submitting || uploading || (isPrivate && (!disclaimerOk || !ownershipOk))}
+            disabled={submitting || uploading || (isPrivate && (!disclaimerOk || !ownershipOk)) || !contentTermsOk}
             className="btn-gold w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Redirecting to PayFast…' : `Pay R${amount} & List My Property`}
           </button>
-          {isPrivate && attemptedSubmit && (!disclaimerOk || !ownershipOk) && (
-            <p className="mt-3 text-xs text-gold-bright text-center">Tick both private-listing confirmations above to continue.</p>
+          {attemptedSubmit && ((isPrivate && (!disclaimerOk || !ownershipOk)) || !contentTermsOk) && (
+            <p className="mt-3 text-xs text-gold-bright text-center">Tick the terms above to continue.</p>
           )}
           <p className="mt-3 text-xs text-faint text-center">
             Payment is processed securely by PayFast. Your listing goes live within 48 hours of payment.

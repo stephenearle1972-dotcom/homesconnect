@@ -5,10 +5,15 @@
 // 4. Builds a signed PayFast param set
 // 5. Returns the PayFast post URL + params so the client can auto-submit a form
 
-import { appendRow as sheetsAppendRow } from './_lib/sheets.js';
+import { appendRow as sheetsAppendRow, appendRowToTab } from './_lib/sheets.js';
 import { PAYFAST, signParams, siteBaseUrl } from './_lib/payfast.js';
+import { moderateImages } from './_lib/vision.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
+// Deploy-context data isolation: when HOMESCONNECT_LISTINGS_TAB is set (sandbox /
+// preview deploys), listings are written to that tab instead of the first tab.
+// Unset (production) → first tab, i.e. byte-for-byte the original behaviour.
+const LISTINGS_TAB = process.env.HOMESCONNECT_LISTINGS_TAB || '';
 
 const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
 const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced', agency: 'Agency' };
@@ -22,10 +27,10 @@ const CORS = {
 function bad(status, body) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function ok(body) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 
-// Header order in the sheet (must mirror the header row, A..AJ). Append is positional,
-// so this array order must match the sheet EXACTLY — including the Make-an-Offer
-// columns (AG/AH), which this function leaves blank for new listings but must still
-// account for so ownership_attested/_at land at AI/AJ, not AG/AH.
+// Header order MUST mirror the LIVE sheet header row exactly — append is positional.
+// Trailing columns accreted across features, in this exact order: make_an_offer_* and
+// ownership_attested_* (private-seller path), then agent_email (paid-listing email
+// recipient), then moderation (image-moderation gate). New columns go at the END only.
 const SHEET_COLS = [
   'id','type','status','tier','title','price','price_display','bedrooms','bathrooms',
   'garage','garden','pool','pet_friendly','property_type','suburb','city','province',
@@ -34,6 +39,11 @@ const SHEET_COLS = [
   'seller_type','disclaimer_accepted','disclaimer_accepted_at','whatsapp','size_sqm','address',
   'make_an_offer_enabled','make_an_offer_enabled_at',
   'ownership_attested','ownership_attested_at',
+  'agent_email',
+  // Image-moderation gate (SafeSearch). At the END per the column rules.
+  // Values: approved | flagged | rejected. Clean scan publishes instantly; a flag
+  // or any scan error holds the listing (set below before the row is written).
+  'moderation',
 ];
 
 function formatRand(n) {
@@ -84,7 +94,7 @@ function validate(input) {
   return Object.keys(errors).length ? errors : null;
 }
 
-function buildRow({ id, input }) {
+function buildRow({ id, input, moderation }) {
   const images = Array.isArray(input.images) ? input.images : [];
   const priceNum = Math.round(Number(input.price));
   const priceDisplay = input.type === 'rent'
@@ -138,12 +148,18 @@ function buildRow({ id, input }) {
     make_an_offer_enabled_at: '',
     ownership_attested: ownershipAttested ? 'yes' : 'no',
     ownership_attested_at: ownershipAttested ? new Date().toISOString() : '',
+    // Persisted so payfast-itn can email the lister a confirmation on activation.
+    agent_email: (input.agent_email || '').trim(),
+    // 'approved' (clean) or 'flagged' (unsafe / scan error) — decided before write.
+    moderation,
   };
   return SHEET_COLS.map((c) => map[c] ?? '');
 }
 
 async function appendRow(row) {
-  return sheetsAppendRow(SHEET_ID, row);
+  return LISTINGS_TAB
+    ? appendRowToTab(SHEET_ID, LISTINGS_TAB, row)
+    : sheetsAppendRow(SHEET_ID, row);
 }
 
 export const handler = async (event) => {
@@ -160,9 +176,24 @@ export const handler = async (event) => {
   // 1. Generate listing ID
   const id = 'HC' + Math.floor(Date.now() / 1000);
 
+  // 1b. Moderate every image BEFORE the row is written (synchronous SafeSearch scan,
+  // so clean listings still publish instantly). moderateImages is itself fail-safe —
+  // it returns 'flagged' on any unsafe image OR any scan error/outage, never throws —
+  // but we belt-and-braces wrap it so an unexpected throw still fail-safes to flagged.
+  let moderation = 'flagged';
+  try {
+    const result = await moderateImages(Array.isArray(body.images) ? body.images : []);
+    moderation = result.moderation === 'approved' ? 'approved' : 'flagged';
+    console.log('[list-property] moderation', id, moderation, result.reason,
+      JSON.stringify(result.perImage.map((p) => ({ r: p.result, c: p.categories }))));
+  } catch (err) {
+    console.error('[list-property] moderation scan threw — fail-safe to flagged:', err.message);
+    moderation = 'flagged';
+  }
+
   // 2. Append pending row
   try {
-    const row = buildRow({ id, input: body });
+    const row = buildRow({ id, input: body, moderation });
     await appendRow(row);
   } catch (err) {
     console.error('[list-property] Sheet append failed:', err.message);

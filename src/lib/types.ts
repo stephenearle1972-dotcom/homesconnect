@@ -30,4 +30,6 @@ export type Listing = {
   sizeSqm: number;
   address: string;
   makeAnOfferEnabled: boolean;
+  // Image-moderation state: '' (grandfathered=approved) | 'approved' | 'flagged' | 'rejected'.
+  moderation: string;
 };
