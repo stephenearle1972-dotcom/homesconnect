@@ -5,7 +5,6 @@ import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 import ChatPanel from '../components/ChatPanel';
-import WhatsappQR from '../components/WhatsappQR';
 import PhoneDemo from '../components/PhoneDemo';
 
 const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill/w_1800/h_1100/q_auto/f_auto/homesconnect/property-02-bushveld-lodge.jpg';
@@ -27,7 +26,6 @@ export default function HomePage() {
       <PhoneDemo />
       <Features />
       <FeaturedListings featured={featured} />
-      <BotDemo />
       <EmbeddedSearch />
     </>
   );
@@ -151,44 +149,6 @@ function FeaturedListings({ featured }: { featured: Listing[] }) {
   );
 }
 
-function BotDemo() {
-  return (
-    <section className="py-20 md:py-28 bg-bg-mid/40">
-      <div className="max-w-6xl mx-auto px-4 md:px-8 grid gap-12 md:grid-cols-2 items-center">
-        <div>
-          <SectionHeading eyebrow="WhatsApp Demo" title="Search at the speed of a text message" tight />
-          <p className="mt-6 text-soft leading-relaxed">
-            The HomesConnect WhatsApp bot understands natural language. Buyers describe what they want and
-            the bot replies with matching properties — complete with price, location, specs and the agent’s direct line.
-          </p>
-          <div className="flex flex-wrap items-center gap-4 mt-8">
-            <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn-wa">Try it now</a>
-            <div className="hidden md:block">
-              <WhatsappQR size={140} label="Scan to chat" />
-            </div>
-          </div>
-          <div className="md:hidden mt-8 flex justify-center">
-            <WhatsappQR size={140} label="Scan to chat" />
-          </div>
-        </div>
-        <div className="rounded-3xl p-5 md:p-7 border border-white/10" style={{ background: 'linear-gradient(180deg,#0b1d14,#0d1b12)' }}>
-          <div className="flex flex-col gap-3 max-w-md mx-auto text-sm">
-            <Bubble side="user">3 bed house in Pretoria East under R2M</Bubble>
-            <Bubble side="bot">
-              I found 1 match in Pretoria East:{"\n\n"}
-              <strong>Family Home in Faerie Glen — R 2,100,000</strong>{"\n"}
-              3 bed · 2 bath · 2 garage · Garden · Pet friendly{"\n\n"}
-              Agent: Pieter van der Merwe (PVDM Realty)
-            </Bubble>
-            <Bubble side="user">Contact the agent</Bubble>
-            <Bubble side="bot">Connecting you to Pieter — sending him your number now. He’ll reach out within the hour 👍</Bubble>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function EmbeddedSearch() {
   return (
     <section id="search" className="py-20 md:py-28">
@@ -211,17 +171,6 @@ function EmbeddedSearch() {
         </div>
       </div>
     </section>
-  );
-}
-
-function Bubble({ side, children }: { side: 'user' | 'bot'; children: React.ReactNode }) {
-  const isUser = side === 'user';
-  return (
-    <div className={`max-w-[85%] rounded-2xl px-4 py-3 whitespace-pre-wrap leading-relaxed ${
-      isUser
-        ? 'self-end bg-wa-green text-white rounded-br-sm'
-        : 'self-start bg-white/95 text-bg-dark rounded-bl-sm'
-    }`}>{children}</div>
   );
 }
 
