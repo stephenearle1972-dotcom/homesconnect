@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadConveyancers, type Conveyancer } from '../lib/conveyancers';
 import { PROVINCES, CONVEYANCER_DISCLAIMER } from '../lib/constants';
+import Seo from '../lib/seo';
 
 const FALLBACK_BG = 'linear-gradient(135deg,#1e3428,#0d1b12)';
 
@@ -45,6 +46,11 @@ export default function ConveyancersPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+      <Seo
+        title="Conveyancers Directory — Find a Property Attorney | HomesConnect"
+        description="A free directory of South African conveyancers and property attorneys. Search by province and region to find a firm to handle your property transfer."
+        path="/conveyancers"
+      />
       <p className="chip bg-white/5 text-gold-bright mb-4">Free directory</p>
       <h1 className="font-display text-4xl md:text-6xl text-white">Conveyancing Attorneys</h1>
       <p className="mt-3 text-soft max-w-2xl">

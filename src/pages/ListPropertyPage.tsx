@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import Seo from '../lib/seo';
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dkn6tnxao';
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'homesconnect_listings';
@@ -243,6 +244,11 @@ export default function ListPropertyPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-8 py-12 md:py-16">
+      <Seo
+        title="List Your Property — Sell or Rent on WhatsApp | HomesConnect"
+        description="List your property on HomesConnect from R99/month — no commission. Live on the website and WhatsApp bot within 48 hours. Agents and private sellers welcome."
+        path="/list-property"
+      />
       <p className="chip bg-white/5 text-gold-bright mb-4">List Your Property</p>
       <h1 className="font-display text-4xl md:text-5xl text-white">List Your Property on HomesConnect</h1>
       <p className="mt-3 text-soft max-w-2xl">

@@ -4,11 +4,74 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="HomesConnect — South Africa's first WhatsApp-powered property search. Find your next home via WhatsApp." />
+    <meta name="theme-color" content="#0e3b2e" />
+
+    <!-- Primary meta (homepage defaults; per-route values are set client-side by <Seo />) -->
+    <title>HomesConnect — Buy, Rent and Sell Property on WhatsApp | South Africa</title>
+    <meta name="description" content="HomesConnect is South Africa's WhatsApp-powered property search. Browse homes to buy or rent, list your own property, and connect with sellers directly on WhatsApp." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://homesconnect.co.za/" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="HomesConnect" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HomesConnect — Buy, Rent and Sell Property on WhatsApp | South Africa" />
+    <meta property="og:description" content="South Africa's WhatsApp-powered property search. Browse homes to buy or rent, list your own property, and connect with sellers directly on WhatsApp." />
+    <meta property="og:url" content="https://homesconnect.co.za/" />
+    <meta property="og:image" content="https://homesconnect.co.za/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_ZA" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HomesConnect — Buy, Rent and Sell Property on WhatsApp | South Africa" />
+    <meta name="twitter:description" content="South Africa's WhatsApp-powered property search. Browse homes to buy or rent, list your own property, and connect with sellers directly on WhatsApp." />
+    <meta name="twitter:image" content="https://homesconnect.co.za/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>HomesConnect — Find Your Next Home via WhatsApp</title>
+
+    <!-- Site-wide structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://homesconnect.co.za/#organization",
+          "name": "HomesConnect",
+          "url": "https://homesconnect.co.za/",
+          "logo": "https://homesconnect.co.za/og-image.png",
+          "description": "South Africa's WhatsApp-powered property search platform.",
+          "areaServed": "ZA",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "telephone": "+27-76-795-9872",
+            "email": "hello@townconnect.co.za",
+            "areaServed": "ZA",
+            "availableLanguage": ["en", "af"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://homesconnect.co.za/#website",
+          "url": "https://homesconnect.co.za/",
+          "name": "HomesConnect",
+          "description": "Buy, rent and sell property on WhatsApp in South Africa.",
+          "publisher": { "@id": "https://homesconnect.co.za/#organization" },
+          "inLanguage": "en-ZA",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://homesconnect.co.za/listings?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

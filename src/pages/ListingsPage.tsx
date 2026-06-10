@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 import { PROVINCES } from '../lib/constants';
+import Seo from '../lib/seo';
 
 const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
 
@@ -10,7 +12,9 @@ export default function ListingsPage() {
   const [all, setAll] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [q, setQ] = useState('');
+  // Seed the keyword filter from ?q= so deep links and the WebSite SearchAction work.
+  const [searchParams] = useSearchParams();
+  const [q, setQ] = useState(searchParams.get('q') || '');
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
   const [type, setType] = useState<'' | 'sale' | 'rent'>('');
@@ -50,6 +54,11 @@ export default function ListingsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+      <Seo
+        title="Property Listings — Houses & Apartments for Sale and Rent | HomesConnect"
+        description="Browse HomesConnect property listings across South Africa. Filter homes for sale or to rent by province, city, price and bedrooms — then enquire on WhatsApp."
+        path="/listings"
+      />
       <p className="chip bg-white/5 text-gold-bright mb-4">Browse</p>
       <h1 className="font-display text-4xl md:text-6xl text-white">Listings</h1>
       <p className="mt-3 text-soft max-w-2xl">Filter the catalogue or message the bot for instant matches.</p>

@@ -2,10 +2,16 @@ import { Link } from 'react-router-dom';
 import ChatPanel from '../components/ChatPanel';
 import WhatsappQR from '../components/WhatsappQR';
 import { WA_LINK } from '../lib/constants';
+import Seo from '../lib/seo';
 
 export default function SearchPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-8 py-12 md:py-16">
+      <Seo
+        title="AI Property Search — Find Homes in Real Time | HomesConnect"
+        description="Search South African property listings with the HomesConnect AI assistant. Describe what you want — area, price, bedrooms, features — and get instant matches."
+        path="/search"
+      />
       <p className="chip bg-white/5 text-gold-bright mb-4">Search</p>
       <h1 className="font-display text-4xl md:text-6xl text-white">Search Properties with AI</h1>
       <p className="mt-3 text-soft max-w-2xl">

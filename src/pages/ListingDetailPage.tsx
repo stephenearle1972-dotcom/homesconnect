@@ -4,6 +4,7 @@ import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import { WA_NUMBER, maoAllowed } from '../lib/constants';
 import { toSlug } from '../lib/slug';
+import Seo, { listingJsonLd } from '../lib/seo';
 
 export default function ListingDetailPage() {
   const { id } = useParams();
@@ -20,6 +21,11 @@ export default function ListingDetailPage() {
   if (listing === null) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-16">
+        <Seo
+          title="Listing not found | HomesConnect"
+          description="This property listing is no longer available. Browse current listings on HomesConnect."
+          noindex
+        />
         <p className="font-display text-3xl text-white">Listing not found</p>
         <Link to="/listings" className="mt-4 inline-block text-teal-bright">← Back to listings</Link>
       </div>
@@ -31,6 +37,15 @@ export default function ListingDetailPage() {
     `Hi! I'm interested in ${listing.title} (${listing.id}) — ${listing.suburb}, ${listing.city}. Is it still available?`
   );
   const enquireWa = `https://wa.me/${WA_NUMBER}?text=${enquireMsg}`;
+  const dealType = listing.type === 'rent' ? 'to rent' : 'for sale';
+  const metaTitle = `${listing.title} — ${listing.priceDisplay} | HomesConnect`;
+  const metaDesc = [
+    `${listing.bedrooms} bed`,
+    `${listing.bathrooms} bath`,
+    listing.propertyType,
+  ].filter(Boolean).join(', ')
+    + ` ${dealType} in ${listing.suburb || listing.city}, ${listing.province}.`
+    + ` ${listing.priceDisplay}. Enquire on WhatsApp via HomesConnect.`;
   const isPrivate = listing.sellerType === 'private';
   // Prefer the dedicated WhatsApp number, fall back to the contact phone.
   const directNumber = listing.whatsapp || listing.agentPhone;
@@ -40,6 +55,14 @@ export default function ListingDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
+      <Seo
+        title={metaTitle}
+        description={metaDesc.slice(0, 160)}
+        path={`/listing/${listing.id}`}
+        image={listing.imageUrl || undefined}
+        type="article"
+        jsonLd={listingJsonLd(listing)}
+      />
       <Link to="/listings" className="text-sm text-soft hover:text-white">← Back to listings</Link>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-[2fr,1fr]">
