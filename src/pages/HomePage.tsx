@@ -6,6 +6,7 @@ import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 import ChatPanel from '../components/ChatPanel';
 import WhatsappQR from '../components/WhatsappQR';
+import PhoneDemo from '../components/PhoneDemo';
 
 const HERO_BG = 'https://res.cloudinary.com/dkn6tnxao/image/upload/c_fill/w_1800/h_1100/q_auto/f_auto/homesconnect/property-02-bushveld-lodge.jpg';
 
@@ -23,6 +24,7 @@ export default function HomePage() {
       <Hero />
       <HowItWorks />
       <Pricing />
+      <PhoneDemo />
       <Features />
       <FeaturedListings featured={featured} />
       <BotDemo />

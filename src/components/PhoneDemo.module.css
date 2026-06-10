@@ -1,0 +1,204 @@
+/* PhoneDemo — ported verbatim from homesconnect-whatsapp-demo-v6.html.
+   Scoped as a CSS module. The v6 :root custom props live on .section here;
+   the v6 <body> radial background becomes this section's own dark band. */
+
+.section {
+  --hc-green: #0e3b2e;
+  --hc-gold: #d8a423;
+  --wa-header: #075e54;
+  --wa-bg: #e5ddd5;
+  --wa-out: #dcf8c6;
+  --wa-in: #ffffff;
+  --tick-blue: #53bdeb;
+
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #143d30 0%, #0a1f18 58%, #060f0b 100%);
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── ambient glows ───────────────────────────────────── */
+.glow { position: absolute; border-radius: 9999px; pointer-events: none; z-index: 0; }
+.glowLg {
+  width: 620px; height: 620px;
+  background: radial-gradient(circle, rgba(216,164,35,0.20) 0%, rgba(22,163,74,0.30) 35%, rgba(22,163,74,0) 70%);
+  filter: blur(70px); animation: breathe 7s ease-in-out infinite;
+}
+.glowSm {
+  width: 380px; height: 380px; transform: translateY(-50px);
+  background: radial-gradient(circle, rgba(216,164,35,0.28) 0%, rgba(216,164,35,0) 70%);
+  filter: blur(44px); animation: breathe 7s ease-in-out infinite reverse;
+}
+.ground {
+  position: absolute; bottom: -34px; width: 340px; height: 48px; border-radius: 50%;
+  background: rgba(0,0,0,.55); filter: blur(22px);
+}
+@keyframes breathe { 0%,100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+
+/* ── phone frame ─────────────────────────────────────── */
+.phone {
+  position: relative; z-index: 2; width: 312px; height: 650px; border-radius: 47px; padding: 9px;
+  background: linear-gradient(135deg,#d7dadd 0%,#a7adb2 18%,#eef1f3 38%,#9aa0a5 60%,#cfd3d6 80%,#b6bbc0 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255,255,255,.75),
+    inset 0 -2px 3px rgba(0,0,0,.45),
+    0 24px 55px rgba(0,0,0,.6),
+    0 10px 32px rgba(22,163,74,.22);
+}
+.side { position: absolute; background: linear-gradient(90deg,#8d9398,#c5cace,#8d9398); border-radius: 3px; }
+.power { right: -3.5px; top: 152px; width: 3.5px; height: 76px; }
+.volup { left: -3.5px; top: 130px; width: 3.5px; height: 46px; }
+.voldn { left: -3.5px; top: 186px; width: 3.5px; height: 46px; }
+.action { left: -3.5px; top: 94px; width: 3.5px; height: 26px; }
+
+.screen {
+  position: relative; width: 100%; height: 100%; border-radius: 38px; overflow: hidden;
+  background: var(--wa-bg); display: flex; flex-direction: column;
+}
+/* soft glass reflection */
+.screen::after {
+  content: ""; position: absolute; inset: 0; border-radius: 38px; pointer-events: none; z-index: 30;
+  background: linear-gradient(115deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 28%);
+}
+.island {
+  position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 25px; background: #070a0d; border-radius: 999px; z-index: 20;
+}
+.statusbar {
+  position: absolute; top: 14px; left: 0; right: 0; display: flex; justify-content: space-between;
+  padding: 0 26px; z-index: 15; color: #fff; font-size: 11px; font-weight: 600; letter-spacing: .2px;
+}
+.statusbar .right { display: flex; gap: 4px; align-items: center; }
+.homeBar {
+  position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+  width: 118px; height: 4px; border-radius: 4px; background: rgba(0,0,0,.28); z-index: 20;
+}
+
+/* ── WhatsApp header ─────────────────────────────────── */
+.waHeader {
+  background: var(--wa-header); color: #fff; padding: 42px 12px 9px;
+  display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+}
+.waBack { width: 18px; height: 18px; flex-shrink: 0; opacity: .95; }
+.waAvatar {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--hc-green);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;
+  color: var(--hc-gold); flex-shrink: 0; border: 1px solid rgba(255,255,255,.25);
+}
+.waMeta { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.waName { font-weight: 600; font-size: 14.5px; white-space: nowrap; }
+.waStatus { font-size: 11px; opacity: .85; }
+.waIcons { margin-left: auto; display: flex; gap: 16px; opacity: .95; }
+.waIcons svg { width: 17px; height: 17px; }
+
+/* ── chat area: bottom-anchored feed ─────────────────────
+   The feed is pinned to the bottom of the chat window, so the
+   newest message is always visible and older messages slide up
+   and clip off the top — like a real chat. No scrolling needed. */
+.waChat {
+  flex: 1; position: relative; overflow: hidden;
+  background-color: var(--wa-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='%23000' opacity='0.028'%3E%3Ccircle cx='12' cy='14' r='1.6'/%3E%3Ccircle cx='52' cy='34' r='1.3'/%3E%3Ccircle cx='78' cy='10' r='1.1'/%3E%3Ccircle cx='30' cy='62' r='1.4'/%3E%3Ccircle cx='70' cy='74' r='1.6'/%3E%3Cpath d='M40 8 l4 4 M64 50 l4 -4' stroke='%23000' stroke-width='1.1' fill='none'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* old messages fade gently as they slide off the top */
+.waChat::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 5; pointer-events: none;
+  background: linear-gradient(to bottom, var(--wa-bg), rgba(229,221,213,0));
+}
+.feed {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 9px 12px; transition: opacity .45s ease;
+}
+.feed > * { flex-shrink: 0; }  /* bubbles keep full size; old ones slide off the top */
+.fading { opacity: 0; }
+
+/* reduced-motion fallback: static, scrollable feed */
+.feedStatic {
+  position: static; max-height: none;
+}
+.waChatStatic { overflow-y: auto; }
+
+.chip {
+  align-self: center; background: #e1f2fa; color: #5a6b72; font-size: 10px; padding: 4px 10px;
+  border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,.08); opacity: 0; animation: fadeIn .3s ease-out forwards;
+}
+.chipLock { background: #fdf3c8; color: #7a6a33; max-width: 86%; text-align: center; line-height: 1.35; }
+
+.bubble {
+  max-width: 80%; padding: 6px 8px 5px; border-radius: 8px; font-size: 12.6px; line-height: 1.36; color: #1f2a24;
+  box-shadow: 0 1px 1px rgba(0,0,0,.13); position: relative; word-wrap: break-word;
+  opacity: 0; transform: translateY(6px); animation: fadeIn .34s ease-out forwards;
+}
+@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+.metaInline {
+  float: right; margin: 6px 0 0 8px; display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9.5px; color: #8696a0; position: relative; top: 3px;
+}
+.ticks { width: 14px; height: 9px; }
+
+.in { background: var(--wa-in); align-self: flex-start; border-top-left-radius: 0; }
+.in::before {
+  content: ""; position: absolute; top: 0; left: -7px; border: 7px solid transparent;
+  border-top-color: var(--wa-in); border-right-color: var(--wa-in);
+  border-width: 6px 7px 6px 0; border-style: solid; border-left: 0;
+}
+.out { background: var(--wa-out); align-self: flex-end; border-top-right-radius: 0; }
+.out::before {
+  content: ""; position: absolute; top: 0; right: -7px; border-width: 6px 0 6px 7px; border-style: solid;
+  border-color: var(--wa-out) transparent transparent var(--wa-out);
+}
+
+.bold { font-weight: 700; }
+.link { color: #027eb5; text-decoration: underline; }
+.agentnum { color: #1fa855; font-weight: 600; }
+
+/* ── property card ───────────────────────────────────── */
+.card { padding: 0; overflow: hidden; width: 80%; background: var(--wa-in); }
+.card .imgwrap { position: relative; }
+.card .imgwrap img { display: block; width: 100%; aspect-ratio: 3/2; height: auto; object-fit: cover; }
+.card .tag {
+  position: absolute; top: 7px; left: 7px; background: rgba(0,0,0,.6); color: #fff; font-size: 9px;
+  font-weight: 600; letter-spacing: .4px; padding: 2.5px 8px; border-radius: 20px;
+}
+.card .body { padding: 7px 9px 6px; }
+.card .ttl { font-size: 12.4px; font-weight: 700; color: #111; line-height: 1.3; }
+.card .price { color: var(--hc-green); font-weight: 700; font-size: 13px; margin-top: 1px; }
+.card .loc, .card .spec { font-size: 11px; color: #5a6b62; margin-top: 1px; }
+.card .agent { font-size: 11px; color: #5a6b62; margin-top: 3px; }
+.card .ref { font-size: 10.5px; color: #8696a0; margin-top: 3px; }
+
+/* ── typing indicator ────────────────────────────────── */
+.typing { display: inline-flex; gap: 3.5px; align-items: center; padding: 10px 12px; }
+.typing span { width: 6px; height: 6px; border-radius: 50%; background: #9aa6a0; animation: blink 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: .2s; }
+.typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,60%,100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+
+/* ── input bar ───────────────────────────────────────── */
+.waInput { flex-shrink: 0; background: #f0f2f5; padding: 6px 8px 18px; display: flex; align-items: center; gap: 7px; }
+.waInput .field {
+  flex: 1; background: #fff; border-radius: 20px; padding: 8px 13px; font-size: 12px; color: #8696a0;
+  box-shadow: 0 1px 1px rgba(0,0,0,.07); display: flex; align-items: center; gap: 8px;
+}
+.waInput svg { width: 18px; height: 18px; fill: #54656f; flex-shrink: 0; }
+.waInput .mic {
+  width: 36px; height: 36px; border-radius: 50%; background: #00a884;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.waInput .mic svg { fill: #fff; width: 17px; height: 17px; }
+
+@media (max-width: 420px) {
+  .phone { transform: scale(.88); }
+  .glowLg { width: 480px; height: 480px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glowLg, .glowSm { animation: none; }
+}
