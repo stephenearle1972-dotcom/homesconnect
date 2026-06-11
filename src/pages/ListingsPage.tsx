@@ -5,6 +5,7 @@ import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
 import { PROVINCES } from '../lib/constants';
 import Seo from '../lib/seo';
+import { track } from '../lib/track';
 
 const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
 
@@ -28,6 +29,15 @@ export default function ListingsPage() {
       setLoading(false);
     });
   }, []);
+
+  // Buyer Alerts: log a web_search once the keyword query settles (debounced),
+  // rather than on every keystroke. Only meaningful queries (2+ chars).
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) return;
+    const t = setTimeout(() => track({ event_type: 'web_search', query_text: term }), 700);
+    return () => clearTimeout(t);
+  }, [q]);
 
   const cities = useMemo(() => {
     const set = new Set<string>();
