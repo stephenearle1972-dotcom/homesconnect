@@ -5,7 +5,7 @@ import { SUPPORT_EMAIL, WA_DISPLAY, WA_LINK } from '../lib/constants';
 export default function Footer() {
   return (
     <footer className="mt-24 border-t border-border-soft bg-bg-dark/80">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 grid gap-10 md:grid-cols-4">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 grid gap-10 md:grid-cols-3 lg:grid-cols-5">
         <div className="md:col-span-2">
           <Logo />
           <p className="mt-4 text-soft max-w-md text-sm leading-relaxed">
@@ -27,6 +27,16 @@ export default function Footer() {
           <ul className="space-y-2 text-sm">
             <li><a href={WA_LINK} className="text-soft hover:text-white" target="_blank" rel="noreferrer">{WA_DISPLAY}</a></li>
             <li><a href={`mailto:${SUPPORT_EMAIL}`} className="text-soft hover:text-white">{SUPPORT_EMAIL}</a></li>
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-faint mb-4">Legal</p>
+          <ul className="space-y-2 text-sm">
+            <li><Link to="/faq" className="text-soft hover:text-white">FAQ</Link></li>
+            <li><Link to="/terms" className="text-soft hover:text-white">Terms of Use</Link></li>
+            <li><Link to="/privacy" className="text-soft hover:text-white">Privacy Notice</Link></li>
+            <li><Link to="/disclaimer" className="text-soft hover:text-white">Disclaimer</Link></li>
+            <li><Link to="/cookies" className="text-soft hover:text-white">Cookie Policy</Link></li>
           </ul>
         </div>
       </div>

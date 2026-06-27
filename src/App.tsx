@@ -15,6 +15,10 @@ import MakeOfferPage from './pages/MakeOfferPage';
 import SellerPortalPage from './pages/SellerPortalPage';
 import BuyerConsentPage from './pages/BuyerConsentPage';
 import PrivacyPage from './pages/PrivacyPage';
+import FaqPage from './pages/FaqPage';
+import TermsPage from './pages/TermsPage';
+import DisclaimerPage from './pages/DisclaimerPage';
+import CookiesPage from './pages/CookiesPage';
 
 export default function App() {
   return (
@@ -35,6 +39,10 @@ export default function App() {
           <Route path="/seller" element={<SellerPortalPage />} />
           <Route path="/offer-consent" element={<BuyerConsentPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/disclaimer" element={<DisclaimerPage />} />
+          <Route path="/cookies" element={<CookiesPage />} />
         </Routes>
       </main>
       <Footer />

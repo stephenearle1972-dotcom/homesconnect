@@ -1,33 +1,55 @@
-import { Link } from 'react-router-dom';
-import { NONBINDING_NOTICE, FRAUD_NOTICE, SUPPORT_EMAIL } from '../lib/constants';
+import { LegalPage, Section, OperatorBlock } from '../components/LegalLayout';
 
 export default function PrivacyPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-8 py-12 md:py-16 text-soft leading-relaxed">
-      <h1 className="font-display text-3xl md:text-5xl text-white">Privacy notice</h1>
-      <p className="mt-4 text-sm text-faint">How HomesConnect (TownConnect (Pty) Ltd) handles personal information for the “Make an Offer” feature, in line with POPIA.</p>
+    <LegalPage title="Privacy Notice">
+      <OperatorBlock />
 
-      <Block title="What we collect">
-        When you send proposed terms we collect your name, a verified mobile number, email, the entity type buying, and the proposed terms you enter. We practise data minimisation — we do not ask for ID or financial documents.
-      </Block>
-      <Block title="Why and how it's shared">
-        Your proposed terms are shared with the seller of the listing (with your consent). Your personal and contact details are shared with a conveyancer <strong>only</strong> if the seller proceeds toward a formal Offer to Purchase <strong>and you give a separate, explicit consent</strong> at that point. We keep a consent and action audit log.
-      </Block>
-      <Block title="What we never do">
-        We never sell your data. We never send banking details. {FRAUD_NOTICE}
-      </Block>
-      <Block title="Storage & access">
-        Offer data is stored privately and is accessed only through authenticated processes — it is never published or exposed publicly.
-      </Block>
-      <Block title="Your choices">
-        Marketing messages are optional and separate. You can request access to or deletion of your data by emailing <a className="text-teal-bright" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
-      </Block>
-
-      <div className="mt-8 rounded-2xl border border-gold/30 bg-gold/5 p-4 text-sm">{NONBINDING_NOTICE}</div>
-      <Link to="/" className="text-teal-bright hover:text-white mt-8 inline-block">← Home</Link>
-    </div>
+      <Section title="1. Introduction">
+        This Privacy Notice explains how HomesConnect, operated by TownConnect (Pty) Ltd, collects, uses, and protects personal information in line with the Protection of Personal Information Act 4 of 2013 (POPIA).
+      </Section>
+      <Section title="2. Information we collect">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>From buyers: name, contact details (such as phone number and email), and the content of your enquiry or WhatsApp message, when you enquire about a listing or ask to be connected to a lister.</li>
+          <li>From listers: name, contact details, and the listing information you supply for advertising.</li>
+          <li>Automatically: basic usage and analytics data (such as pages viewed and searches made) to operate and improve the Platform.</li>
+        </ul>
+      </Section>
+      <Section title="3. Why we process it">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>To display listings and operate the advertising portal.</li>
+          <li>To connect interested buyers with the relevant lister by sharing the enquiry and contact details with that lister.</li>
+          <li>To respond to you and provide support.</li>
+          <li>To improve the Platform and for legitimate business administration.</li>
+          <li>To comply with the law.</li>
+        </ul>
+      </Section>
+      <Section title="4. Who we share it with">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>The relevant lister (estate agent or private seller), when you enquire about or ask to be connected to their listing, so they can respond to you.</li>
+          <li>Our service providers who help us run the Platform (for example hosting, email, and database providers), under appropriate safeguards.</li>
+          <li>Authorities, where required by law.</li>
+        </ul>
+        <p>We do not sell your personal information.</p>
+      </Section>
+      <Section title="5. WhatsApp assistant">
+        When you message our WhatsApp assistant, your message is processed to help you find listings and connect with listers. WhatsApp's own terms and privacy practices also apply to your use of WhatsApp.
+      </Section>
+      <Section title="6. Storage and security">
+        We take reasonable technical and organisational measures to protect personal information. Personal information may be stored using third-party service providers, which may process data outside South Africa; where that happens we take reasonable steps to ensure adequate protection.
+      </Section>
+      <Section title="7. Retention">
+        We keep personal information only for as long as necessary for the purposes above or as required by law, and then delete or anonymise it.
+      </Section>
+      <Section title="8. Your rights">
+        You have the right to access the personal information we hold about you, to ask us to correct or delete it, to object to processing, and to lodge a complaint. To exercise any of these, contact our Information Officer using the details above.
+      </Section>
+      <Section title="9. Complaints to the Regulator">
+        You may also complain to the Information Regulator (South Africa): enquiries: <a className="text-teal-bright hover:text-white" href="mailto:inforeg@inforegulator.org.za">inforeg@inforegulator.org.za</a>; complaints: <a className="text-teal-bright hover:text-white" href="mailto:POPIAComplaints@inforegulator.org.za">POPIAComplaints@inforegulator.org.za</a>; website: <a className="text-teal-bright hover:text-white" href="https://inforegulator.org.za" target="_blank" rel="noreferrer">https://inforegulator.org.za</a>.
+      </Section>
+      <Section title="10. Changes">
+        We may update this notice from time to time. The current version is always available on the Platform.
+      </Section>
+    </LegalPage>
   );
-}
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6"><h2 className="font-display text-xl text-white">{title}</h2><p className="mt-2 text-sm">{children}</p></section>;
 }
