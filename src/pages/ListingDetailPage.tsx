@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
-import { WA_NUMBER, maoAllowed } from '../lib/constants';
+import { maoAllowed } from '../lib/constants';
 import { toSlug } from '../lib/slug';
 import Seo, { listingJsonLd } from '../lib/seo';
+import { track, goUrl, getSid } from '../lib/track';
 
 export default function ListingDetailPage() {
   const { id } = useParams();
@@ -14,6 +15,11 @@ export default function ListingDetailPage() {
   useEffect(() => {
     loadListings().then((all) => setListing(all.find((l) => l.id === id) || null));
   }, [id]);
+
+  // Buyer Alerts: log one web_view per listing mount (fire-and-forget).
+  useEffect(() => {
+    if (listing && listing.id) track({ event_type: 'web_view', listing_ref: listing.id });
+  }, [listing?.id]);
 
   if (listing === undefined) {
     return <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-soft">Loading…</div>;
@@ -33,10 +39,6 @@ export default function ListingDetailPage() {
   }
 
   const images = [listing.imageUrl, listing.image2, listing.image3].filter(Boolean);
-  const enquireMsg = encodeURIComponent(
-    `Hi! I'm interested in ${listing.title} (${listing.id}) — ${listing.suburb}, ${listing.city}. Is it still available?`
-  );
-  const enquireWa = `https://wa.me/${WA_NUMBER}?text=${enquireMsg}`;
   const dealType = listing.type === 'rent' ? 'to rent' : 'for sale';
   const metaTitle = `${listing.title} — ${listing.priceDisplay} | HomesConnect`;
   const metaDesc = [
@@ -49,9 +51,6 @@ export default function ListingDetailPage() {
   const isPrivate = listing.sellerType === 'private';
   // Prefer the dedicated WhatsApp number, fall back to the contact phone.
   const directNumber = listing.whatsapp || listing.agentPhone;
-  const agentWa = directNumber
-    ? `https://wa.me/${normalize(directNumber)}?text=${enquireMsg}`
-    : enquireWa;
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
@@ -134,11 +133,11 @@ export default function ListingDetailPage() {
             {listing.agentAgency && <p className="text-soft text-sm mt-1">{listing.agentAgency}</p>}
             {isPrivate && <p className="text-faint text-xs mt-1">Sold privately — no agent, no commission.</p>}
             {directNumber && <p className="text-soft text-sm mt-1">{formatPhone(directNumber)}</p>}
-            <a href={enquireWa} target="_blank" rel="noreferrer" className="btn-wa w-full mt-5">
+            <a href={goUrl(listing.id, 'hc')} target="_blank" rel="noreferrer" className="btn-wa w-full mt-5">
               Enquire via WhatsApp
             </a>
             {directNumber && (
-              <a href={agentWa} target="_blank" rel="noreferrer" className="btn-ghost w-full mt-3">
+              <a href={goUrl(listing.id, 'agent')} target="_blank" rel="noreferrer" className="btn-ghost w-full mt-3">
                 {isPrivate ? 'WhatsApp the seller direct' : 'WhatsApp the agent direct'}
               </a>
             )}
@@ -160,6 +159,7 @@ export default function ListingDetailPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Listing ID</p>
             <p className="text-soft text-sm">{listing.id}</p>
           </div>
+          <EnquiryForm listingId={listing.id} title={listing.title} isPrivate={isPrivate} />
           <ReportListing listingId={listing.id} title={listing.title} />
           {isPrivate && maoAllowed(listing.id) && (
             <div className="text-center">
@@ -168,6 +168,95 @@ export default function ListingDetailPage() {
           )}
         </aside>
       </div>
+    </div>
+  );
+}
+
+// Buyer enquiry form. Captures name + phone (+ optional message) with explicit
+// consent to share details with the listing agent, then posts to the enquiry
+// function which logs the lead and emails the agent. Styled to match the
+// report-listing control below.
+function EnquiryForm({ listingId, title, isPrivate }: { listingId: string; title: string; isPrivate: boolean }) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [error, setError] = useState('');
+
+  const who = isPrivate ? 'seller' : 'agent';
+
+  async function submit() {
+    setError('');
+    if (!phone.trim()) { setError('Please enter your phone number.'); return; }
+    if (!consent) { setError('Please tick the consent box so we can pass your details on.'); return; }
+    setState('sending');
+    try {
+      const res = await fetch('/.netlify/functions/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: listingId, title, name, phone, message, consent, sid: getSid() }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setState('sent');
+    } catch {
+      // Best-effort: show a soft failure but don't trap the user.
+      setError('Something went wrong sending your enquiry. Please try WhatsApp instead.');
+      setState('idle');
+    }
+  }
+
+  if (state === 'sent') {
+    return (
+      <div className="card-soft rounded-2xl p-6">
+        <p className="font-display text-lg text-white">Thanks — your enquiry is on its way.</p>
+        <p className="text-soft text-sm mt-2">The {who} will contact you on the number you gave. You can also message them on WhatsApp above.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card-soft rounded-2xl p-6">
+      <p className="text-xs uppercase tracking-[0.2em] text-faint mb-2">Enquire about this property</p>
+      <p className="text-soft text-xs mb-3">Leave your details and the {who} will get back to you.</p>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Your name"
+        className="input text-sm w-full"
+      />
+      <input
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="Your phone number *"
+        inputMode="tel"
+        className="input text-sm w-full mt-3"
+      />
+      <textarea
+        rows={3}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Message (optional)"
+        className="input resize-none text-sm w-full mt-3"
+      />
+      <label className="flex items-start gap-2 mt-3 text-xs text-soft">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>I agree that my details are shared with the listing agent so they can contact me.</span>
+      </label>
+      {error && <p className="text-xs text-red-300 mt-2">{error}</p>}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={state === 'sending'}
+        className="btn-gold w-full mt-4 text-sm disabled:opacity-50"
+      >
+        {state === 'sending' ? 'Sending…' : 'Send enquiry'}
+      </button>
     </div>
   );
 }
@@ -262,12 +351,6 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="chip bg-teal/15 text-teal-bright">{children}</span>;
 }
 
-function normalize(raw: string): string {
-  const d = raw.replace(/\D/g, '');
-  if (d.startsWith('27') && d.length === 11) return d;
-  if (d.startsWith('0') && d.length === 10) return '27' + d.slice(1);
-  return d;
-}
 function formatPhone(raw: string): string {
   const d = raw.replace(/\D/g, '');
   if (d.length === 10) return `${d.slice(0,3)} ${d.slice(3,6)} ${d.slice(6)}`;

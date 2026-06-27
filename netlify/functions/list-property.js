@@ -44,6 +44,10 @@ const SHEET_COLS = [
   // Values: approved | flagged | rejected. Clean scan publishes instantly; a flag
   // or any scan error holds the listing (set below before the row is written).
   'moderation',
+  // Buyer Alerts (Phase 1): stable per-agent id. New self-listings are written
+  // blank here and assigned later by scripts/assign-agent-ids.mjs (which groups
+  // by normalized agent_phone). Listed last to preserve positional append order.
+  'agent_id',
 ];
 
 function formatRand(n) {
