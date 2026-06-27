@@ -27,7 +27,11 @@ const STATIC_ROUTES = [
   { loc: '/conveyancers', changefreq: 'weekly', priority: '0.6' },
   { loc: '/list-property', changefreq: 'monthly', priority: '0.7' },
   { loc: '/list-conveyancer', changefreq: 'monthly', priority: '0.4' },
+  { loc: '/faq', changefreq: 'yearly', priority: '0.2' },
+  { loc: '/terms', changefreq: 'yearly', priority: '0.2' },
   { loc: '/privacy', changefreq: 'yearly', priority: '0.2' },
+  { loc: '/disclaimer', changefreq: 'yearly', priority: '0.2' },
+  { loc: '/cookies', changefreq: 'yearly', priority: '0.2' },
 ];
 
 const CSV_URL =
