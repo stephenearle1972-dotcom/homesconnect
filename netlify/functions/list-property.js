@@ -15,8 +15,11 @@ const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID;
 // Unset (production) → first tab, i.e. byte-for-byte the original behaviour.
 const LISTINGS_TAB = process.env.HOMESCONNECT_LISTINGS_TAB || '';
 
-const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00', agency: '999.00' };
-const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced', agency: 'Agency' };
+// The former R999 'agency' tier is now a custom "Agency & Enterprise" offering
+// handled via contact (mailto), not self-serve checkout — so it is intentionally
+// absent here and rejected by validateListing below.
+const TIER_AMOUNT = { basic: '99.00', enhanced: '249.00' };
+const TIER_NAME   = { basic: 'Basic',  enhanced: 'Enhanced' };
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -73,7 +76,7 @@ function validate(input) {
   req('description', 'Description');
 
   if (!['sale', 'rent'].includes(input.type)) errors.type = 'Type must be sale or rent';
-  if (!['basic', 'enhanced', 'agency'].includes(input.tier)) errors.tier = 'Choose a tier';
+  if (!['basic', 'enhanced'].includes(input.tier)) errors.tier = 'Choose a tier';
   if (!(Number(input.price) > 0)) errors.price = 'Price must be greater than 0';
   if (input.agent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.agent_email)) errors.agent_email = 'Enter a valid email';
   // FSBO disclaimer is mandatory for private sellers (STEP 2).

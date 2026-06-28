@@ -14,7 +14,7 @@ const PROVINCES = [
 const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
 
 type Seller = 'agent' | 'private';
-type Tier = 'basic' | 'enhanced' | 'agency';
+type Tier = 'basic' | 'enhanced';
 
 // The FSBO disclaimer text is fixed by the spec — show it verbatim.
 const FSBO_DISCLAIMER =
@@ -34,16 +34,15 @@ const CONTENT_TERMS =
   'at its discretion, and may withhold or forfeit the listing fee where these terms ' +
   'are breached. Reported listings may be reviewed and removed.';
 
-// Tier id, price and photo limit are identical for both seller types. Only the
-// top tier's NAME differs: agents see "Agency Package", private sellers see "Premium"
-// (an individual is not an agency).
+// Self-serve tiers — identical for both seller types. The former R999 "Agency"
+// tier is now a custom "Agency & Enterprise" offering handled via contact (mailto),
+// so it is no longer a self-serve checkout option here. (`seller` is retained for
+// the call site; tier content no longer varies by seller.)
 function tiersFor(seller: Seller): { id: Tier; name: string; price: string; amount: number; photoLimit: number; features: string[] }[] {
+  void seller;
   return [
     { id: 'basic',    name: 'Basic Listing',    price: 'R99',  amount: 99,  photoLimit: 3,  features: ['1 listing', '3 photos', 'Bot visibility', 'Web listing', 'Lead notifications'] },
     { id: 'enhanced', name: 'Enhanced Listing', price: 'R249', amount: 249, photoLimit: 10, features: ['1 listing', '10 photos', 'Priority bot results', 'Video / tour links', 'Analytics', '1 featured / month'] },
-    seller === 'private'
-      ? { id: 'agency', name: 'Premium',        price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] }
-      : { id: 'agency', name: 'Agency Package', price: 'R999', amount: 999, photoLimit: 15, features: ['Up to 10 listings', '5 sub-accounts', '15 photos / listing', 'Top of results', 'Branded profile', '3 featured / month'] },
   ];
 }
 
@@ -85,7 +84,10 @@ export default function ListPropertyPage() {
   const [params, setParams] = useSearchParams();
   const cancelled = params.get('cancelled') === 'true';
   const initialSeller: Seller = params.get('seller') === 'private' ? 'private' : 'agent';
-  const initialTier = (params.get('tier') as Tier) || 'enhanced';
+  // Sanitize the tier param: old `?tier=agency` links (the retired R999 tier) and any
+  // unknown value fall back to 'enhanced' so the selector and amount stay valid.
+  const tierParam = params.get('tier');
+  const initialTier: Tier = tierParam === 'basic' || tierParam === 'enhanced' ? tierParam : 'enhanced';
 
   const [seller, setSeller] = useState<Seller>(initialSeller);
   const [tier, setTier] = useState<Tier>(initialTier);
