@@ -2,9 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
-import { PROVINCES } from '../lib/constants';
 
-const PROPERTY_TYPES = ['house', 'apartment', 'townhouse', 'vacant land', 'commercial'];
+// Compact rand label: R500k, R1m, R2.5m, R85m.
+function randLabel(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return 'R' + (Number.isInteger(m) ? m : m.toFixed(1).replace(/\.0$/, '')) + 'm';
+  }
+  if (n >= 1000) return 'R' + Math.round(n / 1000) + 'k';
+  return 'R' + n;
+}
+
+// Round a max price up to a tidy top bracket so the priciest listings stay reachable.
+function niceTop(n: number): number {
+  if (n <= 1_000_000) return Math.ceil(n / 100_000) * 100_000;
+  if (n <= 10_000_000) return Math.ceil(n / 1_000_000) * 1_000_000;
+  return Math.ceil(n / 5_000_000) * 5_000_000;
+}
+
+const PRICE_STEPS = [500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000];
 
 export default function ListingsPage() {
   const [all, setAll] = useState<Listing[]>([]);
@@ -25,11 +41,56 @@ export default function ListingsPage() {
     });
   }, []);
 
+  // Every dropdown's options are derived from the currently loaded listings so they
+  // never go stale: provinces/types/property-types that don't exist simply don't appear.
+  const types = useMemo(() => {
+    const set = new Set<string>();
+    all.forEach((l) => { if (l.type) set.add(l.type); });
+    // Show "For sale" before "To let" when both are present.
+    return Array.from(set).sort((a, b) => (a === 'sale' ? -1 : b === 'sale' ? 1 : a.localeCompare(b)));
+  }, [all]);
+
+  const provinces = useMemo(() => {
+    const set = new Set<string>();
+    all.forEach((l) => { if (l.province) set.add(l.province); });
+    return Array.from(set).sort();
+  }, [all]);
+
+  const propertyTypes = useMemo(() => {
+    const set = new Set<string>();
+    all.forEach((l) => { if (l.propertyType) set.add(l.propertyType); });
+    return Array.from(set).sort();
+  }, [all]);
+
+  // Cities depend on the selected province. Blank and "UNKNOWN" towns are omitted so
+  // we never show a bare "UNKNOWN" option (those listings still show in the full grid).
   const cities = useMemo(() => {
     const set = new Set<string>();
-    all.forEach((l) => { if (!province || l.province === province) set.add(l.city); });
+    all.forEach((l) => {
+      if (province && l.province !== province) return;
+      const c = (l.city || '').trim();
+      if (c && c.toUpperCase() !== 'UNKNOWN') set.add(c);
+    });
     return Array.from(set).sort();
   }, [all, province]);
+
+  const bedOptions = useMemo(() => {
+    const maxBeds = all.reduce((m, l) => Math.max(m, l.bedrooms || 0), 0);
+    const out: number[] = [];
+    for (let i = 1; i <= Math.min(maxBeds, 6); i++) out.push(i);
+    return out;
+  }, [all]);
+
+  // Price brackets derived from the actual data range, in round steps.
+  const priceBrackets = useMemo(() => {
+    const prices = all.map((l) => l.price).filter((p) => p > 0);
+    if (!prices.length) return [];
+    const maxP = Math.max(...prices);
+    const out = PRICE_STEPS.filter((s) => s < maxP);
+    const top = niceTop(maxP);
+    if (!out.includes(top)) out.push(top);
+    return out;
+  }, [all]);
 
   const filtered = useMemo(() => {
     const qLow = q.trim().toLowerCase();
@@ -63,12 +124,13 @@ export default function ListingsPage() {
         />
         <Select value={type} onChange={(v) => setType(v as 'sale' | 'rent' | '')} className="md:col-span-2">
           <option value="">Sale or rent</option>
-          <option value="sale">For sale</option>
-          <option value="rent">To let</option>
+          {types.map((t) => (
+            <option key={t} value={t}>{t === 'sale' ? 'For sale' : t === 'rent' ? 'To let' : t}</option>
+          ))}
         </Select>
         <Select value={province} onChange={(v) => { setProvince(v); setCity(''); }} className="md:col-span-2">
           <option value="">All provinces</option>
-          {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+          {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
         </Select>
         <Select value={city} onChange={setCity} className="md:col-span-2">
           <option value="">All cities</option>
@@ -76,22 +138,15 @@ export default function ListingsPage() {
         </Select>
         <Select value={propertyType} onChange={setPropertyType} className="md:col-span-2">
           <option value="">Any type</option>
-          {PROPERTY_TYPES.map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}
+          {propertyTypes.map((p) => <option key={p} value={p}>{p}</option>)}
         </Select>
         <Select value={String(minBeds)} onChange={(v) => setMinBeds(Number(v))} className="md:col-span-2">
           <option value="0">Any beds</option>
-          <option value="1">1+ beds</option>
-          <option value="2">2+ beds</option>
-          <option value="3">3+ beds</option>
-          <option value="4">4+ beds</option>
+          {bedOptions.map((b) => <option key={b} value={String(b)}>{b}+ beds</option>)}
         </Select>
         <Select value={String(maxPrice)} onChange={(v) => setMaxPrice(Number(v))} className="md:col-span-3">
           <option value="0">Max price (any)</option>
-          <option value="50000">Up to R 50,000 / mo</option>
-          <option value="1000000">Up to R 1,000,000</option>
-          <option value="2000000">Up to R 2,000,000</option>
-          <option value="3000000">Up to R 3,000,000</option>
-          <option value="5000000">Up to R 5,000,000</option>
+          {priceBrackets.map((b) => <option key={b} value={String(b)}>Up to {randLabel(b)}</option>)}
         </Select>
         <button
           onClick={() => { setQ(''); setProvince(''); setCity(''); setType(''); setPropertyType(''); setMinBeds(0); setMaxPrice(0); }}
