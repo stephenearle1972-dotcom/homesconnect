@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { WA_LINK } from '../lib/constants';
+import { WA_LINK, SUPPORT_EMAIL } from '../lib/constants';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import ListingCard from '../components/ListingCard';
@@ -180,8 +180,20 @@ function EmbeddedSearch() {
   );
 }
 
+type Tier = {
+  name: string;
+  price: string;
+  per: string;
+  features: string[];
+  highlight: boolean;
+  cta: string;
+  ctaStyle: 'wa' | 'gold';
+  tierParam?: string;
+  href?: string;
+};
+
 function Pricing() {
-  const tiers = [
+  const tiers: Tier[] = [
     {
       name: 'Basic Listing', price: 'R99', per: '/mo per property',
       features: ['1 listing', '3 photos', 'Bot visibility', 'Basic agent profile', 'Web listing', 'Lead notifications'],
@@ -199,12 +211,12 @@ function Pricing() {
       tierParam: 'enhanced',
     },
     {
-      name: 'Agency Package', price: 'R999', per: '/mo per agency',
-      features: ['Up to 10 listings', '5 agent sub-accounts', '15 photos per listing', 'Top of results', 'Branded profile', '3 featured / month'],
+      name: 'Agency & Enterprise', price: 'Custom', per: 'tailored to your agency',
+      features: ['Unlimited listings', 'Multiple agent sub-accounts', 'Branded agency profile', 'Top of search results', 'Featured listings', 'Priority bot results', 'Analytics dashboard', 'Dedicated onboarding and support'],
       highlight: false,
-      cta: 'Get Started',
+      cta: 'Contact us',
       ctaStyle: 'wa' as const,
-      tierParam: 'agency',
+      href: `mailto:${SUPPORT_EMAIL}?subject=Agency%20%26%20Enterprise%20enquiry`,
     },
   ];
   return (
@@ -238,12 +250,21 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link
-                to={`/list-property?tier=${t.tierParam}`}
-                className={`${t.ctaStyle === 'wa' ? 'btn-wa' : 'btn-gold'} w-full mt-7`}
-              >
-                {t.cta}
-              </Link>
+              {t.href ? (
+                <a
+                  href={t.href}
+                  className={`${t.ctaStyle === 'wa' ? 'btn-wa' : 'btn-gold'} w-full mt-7`}
+                >
+                  {t.cta}
+                </a>
+              ) : (
+                <Link
+                  to={`/list-property?tier=${t.tierParam}`}
+                  className={`${t.ctaStyle === 'wa' ? 'btn-wa' : 'btn-gold'} w-full mt-7`}
+                >
+                  {t.cta}
+                </Link>
+              )}
             </div>
           ))}
         </div>
