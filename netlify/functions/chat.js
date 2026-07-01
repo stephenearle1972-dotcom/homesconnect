@@ -66,8 +66,11 @@ async function loadListings() {
 }
 
 function rowsToContext(rows) {
-  // Keep it concise — feed enough for Gemini to match but not blow context.
-  const trimmed = rows.slice(0, 80).map((r) => ({
+  // 300 is generous headroom over the launch-day figure of 80 (picked when there
+  // were only 25 seed listings, not from a measured token budget — the trimmed
+  // per-row context is small enough that 300 rows is still well under Gemini's
+  // input context limit; see cc-report for the empirical token math).
+  const trimmed = rows.slice(0, 300).map((r) => ({
     id: r.id,
     type: r.type,
     title: r.title,
