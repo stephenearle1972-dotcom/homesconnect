@@ -4,8 +4,7 @@ import { loadListings } from '../lib/loadListings';
 import { loadConveyancers, type Conveyancer } from '../lib/conveyancers';
 import type { Listing } from '../lib/types';
 import { NONBINDING_NOTICE, FRAUD_NOTICE, COMPANY, ADDON, maoAllowed } from '../lib/constants';
-
-const rand = (n: number) => 'R ' + (Number(n) || 0).toLocaleString('en-ZA');
+import { formatRand as rand } from '../lib/format';
 
 async function api(path: string, body: any) {
   const res = await fetch(`/.netlify/functions/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
