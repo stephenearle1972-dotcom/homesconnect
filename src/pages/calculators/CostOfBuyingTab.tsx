@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react';
 import { calcCostOfBuying } from '../../lib/calculators';
 import { formatRand, formatRandRange } from '../../lib/format';
-import { Section, Field, ToggleRow } from './CalcUI';
+import { Section, NumberField, ToggleRow } from './CalcUI';
 import LeadCaptureForm from './LeadCaptureForm';
 
 export default function CostOfBuyingTab() {
-  const [price, setPrice] = useState(1500000);
-  // Defaults to an assumed 90% bond (10% deposit) — there is no separate
-  // deposit field on this tab per the brief; edit the bond amount directly,
-  // down to 0 for a cash purchase.
-  const [bondAmount, setBondAmount] = useState(1350000);
+  // Raw string state — see BondRepaymentTab for why: '' must be a valid,
+  // displayable value so the field can actually go empty on mobile.
+  // Bond amount defaults to an assumed 90% bond (10% deposit) — there is no
+  // separate deposit field on this tab per the brief; edit the bond amount
+  // directly, down to 0 for a cash purchase.
+  const [priceRaw, setPriceRaw] = useState('1500000');
+  const [bondAmountRaw, setBondAmountRaw] = useState('1350000');
   const [isDeveloperSale, setIsDeveloperSale] = useState(false);
+
+  const price = Number(priceRaw) || 0;
+  const bondAmount = Number(bondAmountRaw) || 0;
+  const priceEntered = priceRaw !== '';
 
   const r = useMemo(() => calcCostOfBuying({ price, bondAmount, isDeveloperSale }), [price, bondAmount, isDeveloperSale]);
 
@@ -37,26 +43,8 @@ export default function CostOfBuyingTab() {
     <div className="space-y-6">
       <Section title="Cost of buying">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Purchase price">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Bond amount" hint="0 for a cash purchase">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={bondAmount}
-              onChange={(e) => setBondAmount(Number(e.target.value) || 0)}
-            />
-          </Field>
+          <NumberField label="Purchase price" value={priceRaw} onChange={setPriceRaw} />
+          <NumberField label="Bond amount" hint="0 for a cash purchase" value={bondAmountRaw} onChange={setBondAmountRaw} />
         </div>
 
         <div className="mt-4">
@@ -70,46 +58,54 @@ export default function CostOfBuyingTab() {
           )}
         </div>
 
-        <div className="mt-6 rounded-xl border border-white/10 bg-white/5 divide-y divide-white/10">
-          <LineRow label="Transfer duty" value={formatRand(r.transferDuty)} tag="payable to SARS — exact" />
-          <LineRow label="Transfer attorney fees" value={formatRandRange(r.conveyancingFee.low, r.conveyancingFee.high)} tag="estimate" />
-          <LineRow
-            label="Deeds Office fee (transfer)"
-            value={formatRandRange(r.deedsOfficeTransferFee.low, r.deedsOfficeTransferFee.high)}
-            tag="estimate"
-          />
-          <LineRow
-            label="Bond registration attorney fees"
-            value={formatRandRange(r.bondRegistrationFee.low, r.bondRegistrationFee.high)}
-            tag="estimate"
-          />
-          <LineRow label="Bank initiation fee" value={formatRandRange(r.bankInitiationFee.low, r.bankInitiationFee.high)} tag="estimate" />
-          <LineRow label="Sundries, FICA, postage" value={formatRandRange(r.sundries.low, r.sundries.high)} tag="estimate" />
-        </div>
+        {!priceEntered ? (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-soft text-sm">Enter a purchase price to see the estimated cost of buying.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 divide-y divide-white/10">
+              <LineRow label="Transfer duty" value={formatRand(r.transferDuty)} tag="payable to SARS — exact" />
+              <LineRow label="Transfer attorney fees" value={formatRandRange(r.conveyancingFee.low, r.conveyancingFee.high)} tag="estimate" />
+              <LineRow
+                label="Deeds Office fee (transfer)"
+                value={formatRandRange(r.deedsOfficeTransferFee.low, r.deedsOfficeTransferFee.high)}
+                tag="estimate"
+              />
+              <LineRow
+                label="Bond registration attorney fees"
+                value={formatRandRange(r.bondRegistrationFee.low, r.bondRegistrationFee.high)}
+                tag="estimate"
+              />
+              <LineRow label="Bank initiation fee" value={formatRandRange(r.bankInitiationFee.low, r.bankInitiationFee.high)} tag="estimate" />
+              <LineRow label="Sundries, FICA, postage" value={formatRandRange(r.sundries.low, r.sundries.high)} tag="estimate" />
+            </div>
 
-        <p className="text-faint text-xs mt-3">
-          Attorney fees are negotiable and vary between firms. Your conveyancer will quote you exactly.
-        </p>
+            <p className="text-faint text-xs mt-3">
+              Attorney fees are negotiable and vary between firms. Your conveyancer will quote you exactly.
+            </p>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total transfer costs</p>
-            <p className="font-display text-lg text-white">approximately {formatRandRange(r.totalTransferCosts.low, r.totalTransferCosts.high)}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total bond costs</p>
-            <p className="font-display text-lg text-white">approximately {formatRandRange(r.totalBondCosts.low, r.totalBondCosts.high)}</p>
-          </div>
-          <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 md:col-span-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total upfront cash required</p>
-            <p className="font-display text-2xl md:text-3xl text-white">
-              approximately {formatRandRange(r.totalUpfrontCash.low, r.totalUpfrontCash.high)}
-            </p>
-            <p className="text-faint text-xs mt-1">
-              Includes the cash portion of the price ({formatRand(r.cashPortionOfPrice)}) plus all costs above.
-            </p>
-          </div>
-        </div>
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total transfer costs</p>
+                <p className="font-display text-lg text-white">approximately {formatRandRange(r.totalTransferCosts.low, r.totalTransferCosts.high)}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total bond costs</p>
+                <p className="font-display text-lg text-white">approximately {formatRandRange(r.totalBondCosts.low, r.totalBondCosts.high)}</p>
+              </div>
+              <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 md:col-span-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-faint mb-1">Total upfront cash required</p>
+                <p className="font-display text-2xl md:text-3xl text-white">
+                  approximately {formatRandRange(r.totalUpfrontCash.low, r.totalUpfrontCash.high)}
+                </p>
+                <p className="text-faint text-xs mt-1">
+                  Includes the cash portion of the price ({formatRand(r.cashPortionOfPrice)}) plus all costs above.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         <ul className="mt-6 text-soft text-xs space-y-1 list-disc list-inside">
           <li>No transfer duty is payable at or below R1 210 000.</li>
@@ -120,13 +116,15 @@ export default function CostOfBuyingTab() {
         </ul>
       </Section>
 
-      <LeadCaptureForm
-        calcType="cost-of-buying"
-        headlineLabel="Total upfront cash required (estimate)"
-        headlineValue={formatRandRange(r.totalUpfrontCash.low, r.totalUpfrontCash.high)}
-        emailLines={emailLines}
-        budget={price}
-      />
+      {priceEntered && (
+        <LeadCaptureForm
+          calcType="cost-of-buying"
+          headlineLabel="Total upfront cash required (estimate)"
+          headlineValue={formatRandRange(r.totalUpfrontCash.low, r.totalUpfrontCash.high)}
+          emailLines={emailLines}
+          budget={price}
+        />
+      )}
     </div>
   );
 }

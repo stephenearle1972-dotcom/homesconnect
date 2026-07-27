@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { calcAffordability, calcCostOfBuying } from '../../lib/calculators';
 import { formatRand, formatRandRange } from '../../lib/format';
 import { PRIME_RATE, DEFAULT_TERM_YEARS, TERM_OPTIONS_YEARS } from '../../config/propertyRates';
-import { Section, Field, StatCard, ToggleRow } from './CalcUI';
+import { Section, NumberField, Field, StatCard, ToggleRow } from './CalcUI';
 import LeadCaptureForm from './LeadCaptureForm';
 
 // NOTE — data minimisation (per Stephen's decision, on top of the brief):
@@ -13,14 +13,24 @@ import LeadCaptureForm from './LeadCaptureForm';
 // sentence) and non-sensitive assumptions (deposit, rate, term) go out.
 
 export default function AffordabilityTab() {
-  const [applicantIncome, setApplicantIncome] = useState(50000);
-  const [coApplicantIncome, setCoApplicantIncome] = useState(0);
-  const [expenses, setExpenses] = useState(20000);
-  const [existingDebt, setExistingDebt] = useState(5000);
-  const [deposit, setDeposit] = useState(150000);
-  const [rate, setRate] = useState(PRIME_RATE);
+  // Raw string state — see BondRepaymentTab for why: '' must be a valid,
+  // displayable value so the field can actually go empty on mobile.
+  const [applicantIncomeRaw, setApplicantIncomeRaw] = useState('50000');
+  const [coApplicantIncomeRaw, setCoApplicantIncomeRaw] = useState('');
+  const [expensesRaw, setExpensesRaw] = useState('20000');
+  const [existingDebtRaw, setExistingDebtRaw] = useState('5000');
+  const [depositRaw, setDepositRaw] = useState('150000');
+  const [rateRaw, setRateRaw] = useState(String(PRIME_RATE));
   const [years, setYears] = useState<number>(DEFAULT_TERM_YEARS);
   const [deductCosts, setDeductCosts] = useState(false);
+
+  const applicantIncome = Number(applicantIncomeRaw) || 0;
+  const coApplicantIncome = Number(coApplicantIncomeRaw) || 0;
+  const expenses = Number(expensesRaw) || 0;
+  const existingDebt = Number(existingDebtRaw) || 0;
+  const deposit = Number(depositRaw) || 0;
+  const rate = Number(rateRaw) || 0;
+  const incomeEntered = applicantIncomeRaw !== '';
 
   const base = useMemo(
     () => calcAffordability({ applicantIncome, coApplicantIncome, expenses, existingDebt, deposit, ratePct: rate, years }),
@@ -80,67 +90,17 @@ export default function AffordabilityTab() {
     <div className="space-y-6">
       <Section title="Affordability">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Gross monthly income" hint="applicant">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={applicantIncome}
-              onChange={(e) => setApplicantIncome(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Gross monthly income" hint="co-applicant, optional">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={coApplicantIncome}
-              onChange={(e) => setCoApplicantIncome(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Total monthly living expenses">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={expenses}
-              onChange={(e) => setExpenses(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Existing monthly debt repayments">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={existingDebt}
-              onChange={(e) => setExistingDebt(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Deposit available">
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={deposit}
-              onChange={(e) => setDeposit(Number(e.target.value) || 0)}
-            />
-          </Field>
-          <Field label="Interest rate (%)">
-            <input
-              className="input"
-              type="number"
-              inputMode="decimal"
-              step={0.05}
-              min={0}
-              value={rate}
-              onChange={(e) => setRate(Number(e.target.value) || 0)}
-            />
-          </Field>
+          <NumberField label="Gross monthly income" hint="applicant" value={applicantIncomeRaw} onChange={setApplicantIncomeRaw} />
+          <NumberField
+            label="Gross monthly income"
+            hint="co-applicant, optional"
+            value={coApplicantIncomeRaw}
+            onChange={setCoApplicantIncomeRaw}
+          />
+          <NumberField label="Total monthly living expenses" value={expensesRaw} onChange={setExpensesRaw} />
+          <NumberField label="Existing monthly debt repayments" value={existingDebtRaw} onChange={setExistingDebtRaw} />
+          <NumberField label="Deposit available" value={depositRaw} onChange={setDepositRaw} />
+          <NumberField label="Interest rate (%)" value={rateRaw} onChange={setRateRaw} allowDecimal />
           <Field label="Term">
             <select className="input" value={years} onChange={(e) => setYears(Number(e.target.value))}>
               {TERM_OPTIONS_YEARS.map((y) => (
@@ -152,7 +112,11 @@ export default function AffordabilityTab() {
           </Field>
         </div>
 
-        {!base.approved ? (
+        {!incomeEntered ? (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-soft text-sm">Enter your gross monthly income to see what you can afford.</p>
+          </div>
+        ) : !base.approved ? (
           <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
             <p className="font-display text-lg text-white">On these figures a bond is unlikely to be approved.</p>
             <p className="text-soft text-sm mt-2">
@@ -204,13 +168,15 @@ export default function AffordabilityTab() {
         )}
       </Section>
 
-      <LeadCaptureForm
-        calcType="affordability"
-        headlineLabel="Maximum purchase price"
-        headlineValue={base.approved ? formatRand(base.maxPurchasePrice) : 'Not currently affordable'}
-        emailLines={emailLines}
-        budget={base.approved ? base.maxPurchasePrice : 0}
-      />
+      {incomeEntered && (
+        <LeadCaptureForm
+          calcType="affordability"
+          headlineLabel="Maximum purchase price"
+          headlineValue={base.approved ? formatRand(base.maxPurchasePrice) : 'Not currently affordable'}
+          emailLines={emailLines}
+          budget={base.approved ? base.maxPurchasePrice : 0}
+        />
+      )}
     </div>
   );
 }
