@@ -47,6 +47,7 @@ export default function Header() {
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/listings" className={navLinkClass}>Listings</NavLink>
           <NavLink to="/search" className={navLinkClass}>Search</NavLink>
+          <NavLink to="/calculators" className={navLinkClass}>Calculators</NavLink>
           <NavLink to="/conveyancers" className={navLinkClass}>Conveyancers</NavLink>
           <a href="/#pricing" className="text-sm uppercase tracking-[0.2em] font-medium text-soft hover:text-white transition-colors">Pricing</a>
         </nav>
@@ -89,6 +90,7 @@ export default function Header() {
             <NavLink to="/" end className={mobileLinkClass} onClick={close}>Home</NavLink>
             <NavLink to="/listings" className={mobileLinkClass} onClick={close}>Listings</NavLink>
             <NavLink to="/search" className={mobileLinkClass} onClick={close}>Search</NavLink>
+            <NavLink to="/calculators" className={mobileLinkClass} onClick={close}>Calculators</NavLink>
             <NavLink to="/conveyancers" className={mobileLinkClass} onClick={close}>Conveyancers</NavLink>
             <a
               href="/#pricing"

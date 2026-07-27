@@ -95,6 +95,12 @@ export default function ListingDetailPage() {
             <h1 className="font-display text-3xl md:text-5xl text-white">{listing.title}</h1>
             <p className="mt-2 text-soft">{listing.suburb}, {listing.city}, {listing.province}</p>
             <p className="mt-4 font-display text-3xl md:text-4xl text-gold-bright">{listing.priceDisplay}</p>
+            <Link
+              to={`/calculators/bond-repayment?price=${listing.price}`}
+              className="mt-2 inline-block text-sm text-teal-bright hover:text-white transition-colors"
+            >
+              Calculate the bond repayment on this property →
+            </Link>
 
             <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Spec label="Bedrooms" value={String(listing.bedrooms)} />
