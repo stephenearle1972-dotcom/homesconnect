@@ -69,6 +69,18 @@ h1, h2, h3, h4 {
 }
 .input::placeholder { color: rgba(255,255,255,0.4); }
 
+/* Native <select> popups: :root already declares color-scheme: dark, but
+   Windows Chrome/Edge don't reliably inherit that into the popup surface —
+   it draws on white, so unselected options (light text) disappear. Redeclare
+   color-scheme directly on the element (the reliable fix), plus an explicit
+   fallback for engines that ignore color-scheme altogether. */
+select {
+  color-scheme: dark;
+}
+select option {
+  @apply bg-bg-dark text-white;
+}
+
 /* Scrollbar (dark) */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: #0d1b12; }
