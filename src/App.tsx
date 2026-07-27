@@ -19,6 +19,7 @@ import FaqPage from './pages/FaqPage';
 import TermsPage from './pages/TermsPage';
 import DisclaimerPage from './pages/DisclaimerPage';
 import CookiesPage from './pages/CookiesPage';
+import CalculatorsPage from './pages/calculators/CalculatorsPage';
 
 export default function App() {
   return (
@@ -35,6 +36,10 @@ export default function App() {
           <Route path="/listing-success" element={<ListingSuccessPage />} />
           <Route path="/conveyancers" element={<ConveyancersPage />} />
           <Route path="/list-conveyancer" element={<ListConveyancerPage />} />
+          <Route path="/calculators" element={<CalculatorsPage />} />
+          <Route path="/calculators/bond-repayment" element={<CalculatorsPage />} />
+          <Route path="/calculators/affordability" element={<CalculatorsPage />} />
+          <Route path="/calculators/cost-of-buying" element={<CalculatorsPage />} />
           <Route path="/make-offer" element={<MakeOfferPage />} />
           <Route path="/seller" element={<SellerPortalPage />} />
           <Route path="/offer-consent" element={<BuyerConsentPage />} />

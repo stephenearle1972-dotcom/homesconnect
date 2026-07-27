@@ -3,10 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { loadListings } from '../lib/loadListings';
 import type { Listing } from '../lib/types';
 import { NONBINDING_NOTICE } from '../lib/constants';
+import { formatRand as rand } from '../lib/format';
 
 type Stage = 'verify' | 'form' | 'review' | 'done';
 const ENTITY = [['individual', 'An individual'], ['company', 'A company'], ['trust', 'A trust'], ['other', 'Other']];
-const rand = (n: number) => 'R ' + (Number(n) || 0).toLocaleString('en-ZA');
 
 export default function MakeOfferPage() {
   const [params] = useSearchParams();
