@@ -20,16 +20,22 @@ function getTransporter() {
 
 // Returns { ok: true } on success, { ok: false, error } on failure — callers
 // should treat email as best-effort and never fail the whole request on it.
+//
+// bcc: omit it (undefined) to get the default operator copy, as every existing
+// caller does. Pass bcc: null explicitly to suppress the BCC entirely — used
+// only by the calculator estimate emails, which must not copy income/expense
+// figures to hello@townconnect.co.za without consent for that specific use.
 export async function sendEmail({ to, subject, text, html, replyTo, bcc }) {
   if (!process.env.NOTIFY_EMAIL_PASS) {
     console.warn('[email] NOTIFY_EMAIL_PASS not set — skipping send to', to);
     return { ok: false, error: 'email_not_configured' };
   }
+  const bccAddr = bcc === undefined ? 'hello@townconnect.co.za' : bcc || undefined;
   try {
     await getTransporter().sendMail({
       from: FROM,
       to,
-      bcc: bcc || 'hello@townconnect.co.za', // keep a copy for the operator
+      bcc: bccAddr,
       replyTo,
       subject,
       text,

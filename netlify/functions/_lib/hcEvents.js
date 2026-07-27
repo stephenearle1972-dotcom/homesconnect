@@ -5,7 +5,7 @@
 //
 // Schema (events tab, 8 cols):
 //   timestamp | event_type | channel | listing_ref | agent_id | query_text | session_hash | meta
-//   event_type ∈ bot_appearance | bot_connect_request | web_view | web_search | contact_click | enquiry
+//   event_type ∈ bot_appearance | bot_connect_request | web_view | web_search | contact_click | enquiry | calculator_lead
 //   channel    ∈ bot | web
 //   meta       = compact JSON string for anything extra (results_count, src, ...)
 //
