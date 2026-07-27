@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { calcBondRepayment, rateShiftStrip } from '../../lib/calculators';
 import { formatRand } from '../../lib/format';
 import { PRIME_RATE, DEFAULT_TERM_YEARS, TERM_OPTIONS_YEARS, BANK_MONTHLY_ADMIN_FEE } from '../../config/propertyRates';
@@ -6,8 +7,18 @@ import { Section, Field, StatCard } from './CalcUI';
 import LeadCaptureForm from './LeadCaptureForm';
 
 export default function BondRepaymentTab() {
-  const [price, setPrice] = useState(1500000);
-  const [deposit, setDeposit] = useState(150000);
+  // Prefilled from a listing's "Calculate the bond repayment on this
+  // property" link (?price=). Falls back to the default demo figures when
+  // absent or invalid. Deposit stays proportional (10%) to whichever price
+  // this mounted with.
+  const [searchParams] = useSearchParams();
+  const [initialPrice] = useState(() => {
+    const p = Math.round(Number(searchParams.get('price')));
+    return p > 0 ? p : 1500000;
+  });
+
+  const [price, setPrice] = useState(initialPrice);
+  const [deposit, setDeposit] = useState(Math.round(initialPrice * 0.1));
   const [rate, setRate] = useState(PRIME_RATE);
   const [years, setYears] = useState<number>(DEFAULT_TERM_YEARS);
 
