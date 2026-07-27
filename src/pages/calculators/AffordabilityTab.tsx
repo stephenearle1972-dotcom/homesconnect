@@ -209,6 +209,7 @@ export default function AffordabilityTab() {
         headlineLabel="Maximum purchase price"
         headlineValue={base.approved ? formatRand(base.maxPurchasePrice) : 'Not currently affordable'}
         emailLines={emailLines}
+        budget={base.approved ? base.maxPurchasePrice : 0}
       />
     </div>
   );

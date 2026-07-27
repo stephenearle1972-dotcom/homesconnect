@@ -19,17 +19,23 @@ export default function LeadCaptureForm({
   headlineLabel,
   headlineValue,
   emailLines,
+  budget,
 }: {
   calcType: CalcType;
   headlineLabel: string;
   headlineValue: string;
   emailLines: string[];
+  budget: number;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [buyerAlerts, setBuyerAlerts] = useState(false);
-  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  // 'captured' = the lead landed (sheet write always happens); the email may
+  // or may not have gone out — that's tracked separately by emailSent so the
+  // user is never told it arrived when it didn't, and never thinks it vanished.
+  const [state, setState] = useState<'idle' | 'sending' | 'captured'>('idle');
+  const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState('');
 
   async function submit() {
@@ -60,22 +66,37 @@ export default function LeadCaptureForm({
           headlineLabel,
           headlineValue,
           emailLines,
+          budget,
           sid: getSid(),
         }),
       });
       if (!res.ok) throw new Error('failed');
-      setState('sent');
+      const data = await res.json().catch(() => ({}));
+      setEmailSent(!!data.emailSent);
+      setState('captured');
     } catch {
-      setError('Something went wrong sending your estimate. Please try again.');
+      setError('Something went wrong. Please try again.');
       setState('idle');
     }
   }
 
-  if (state === 'sent') {
+  if (state === 'captured') {
     return (
       <div className="card-soft rounded-2xl p-6">
-        <p className="font-display text-lg text-white">Thanks — check your inbox.</p>
-        <p className="text-soft text-sm mt-2">We've emailed your estimate to {email}.</p>
+        {emailSent ? (
+          <>
+            <p className="font-display text-lg text-white">Thanks — check your inbox.</p>
+            <p className="text-soft text-sm mt-2">We've emailed your estimate to {email}.</p>
+          </>
+        ) : (
+          <>
+            <p className="font-display text-lg text-white">Got it — your request is saved.</p>
+            <p className="text-soft text-sm mt-2">
+              We couldn't send the confirmation email to {email} right now, but your estimate request has been
+              captured — the figures above are still yours to note down, and we'll follow up directly.
+            </p>
+          </>
+        )}
       </div>
     );
   }

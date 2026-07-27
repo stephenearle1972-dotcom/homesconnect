@@ -125,6 +125,7 @@ export default function CostOfBuyingTab() {
         headlineLabel="Total upfront cash required (estimate)"
         headlineValue={formatRandRange(r.totalUpfrontCash.low, r.totalUpfrontCash.high)}
         emailLines={emailLines}
+        budget={price}
       />
     </div>
   );

@@ -105,6 +105,7 @@ export default function BondRepaymentTab() {
         headlineLabel="Estimated monthly instalment"
         headlineValue={`${formatRand(result.monthlyInstalment)}/month`}
         emailLines={emailLines}
+        budget={price}
       />
     </div>
   );
