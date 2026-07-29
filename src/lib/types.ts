@@ -33,3 +33,17 @@ export type Listing = {
   // Image-moderation state: '' (grandfathered=approved) | 'approved' | 'flagged' | 'rejected'.
   moderation: string;
 };
+
+// One row per agent in the Agents tab. Joined onto listings by agent_name
+// (trimmed, case-insensitive exact match — see loadAgents.ts). Optional
+// fields are blank when not supplied; every consumer must treat them as
+// possibly empty and degrade cleanly, never assume they're populated.
+export type Agent = {
+  agentName: string;
+  photoUrl: string;
+  agencyLogoWhiteUrl: string;
+  agencyLogoColourUrl: string;
+  email: string;
+  jobTitle: string;
+  bio: string;
+};

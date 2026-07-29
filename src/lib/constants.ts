@@ -13,6 +13,14 @@ export const CSV_URL =
 // Free conveyancer directory — separate tab, published CSV (VITE_CONVEYANCERS_CSV_URL).
 export const CONVEYANCERS_CSV_URL = import.meta.env.VITE_CONVEYANCERS_CSV_URL || '';
 
+// Agents tab — separate tab on the same spreadsheet as the listings CSV, keyed
+// on agent_name (trimmed, case-insensitive join — see loadAgents.ts). Purely
+// additive: if this fails to load or an agent has no row, AgentPage still
+// renders from the listing data alone, just without a photo/logo.
+export const AGENTS_CSV_URL =
+  import.meta.env.VITE_AGENTS_CSV_URL ||
+  'https://docs.google.com/spreadsheets/d/1SMlKNPToUnmh0VzxJmcjti6DPsUML1K7xk4PqvOMKmU/export?format=csv&gid=1896003175';
+
 // ECTA supplier disclosure for the add-on checkout. Replace `address` with the exact
 // registered street address when provided (one-line change).
 export const COMPANY = {
