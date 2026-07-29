@@ -65,30 +65,28 @@ export default function AgentPage() {
           <div>
             <p className="chip bg-white/5 text-gold-bright mb-3">Listing Agent</p>
             <h1 className="font-display text-4xl md:text-5xl text-white">{agent.name}</h1>
-            {agent.agency && (
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <p className="text-soft text-lg">{agent.agency}</p>
-                {agentAssets?.agencyMarkWhiteUrl && (
-                  <img
-                    src={agentAssets.agencyMarkWhiteUrl}
-                    alt={`${agent.agency} mark`}
-                    className="h-7 w-auto"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
-                )}
-              </div>
-            )}
+            {agent.agency && <p className="mt-2 text-soft text-lg">{agent.agency}</p>}
             {agent.phone && <p className="mt-1 text-soft">{formatPhone(agent.phone)}</p>}
             <p className="mt-4 text-faint text-sm">
               {agentListings.length} {agentListings.length === 1 ? 'listing' : 'listings'} on HomesConnect
             </p>
           </div>
         </div>
-        {wa && (
-          <a href={wa} target="_blank" rel="noreferrer" className="btn-wa whitespace-nowrap">
-            Chat on WhatsApp
-          </a>
-        )}
+        <div className="flex flex-col items-center gap-4 md:self-center">
+          {wa && (
+            <a href={wa} target="_blank" rel="noreferrer" className="btn-wa whitespace-nowrap">
+              Chat on WhatsApp
+            </a>
+          )}
+          {agentAssets?.agencyLogoWhiteUrl && (
+            <img
+              src={agentAssets.agencyLogoWhiteUrl}
+              alt={`${agent.agency} logo`}
+              className="w-[110px] h-auto"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+        </div>
       </div>
 
       <h2 className="mt-12 font-display text-2xl md:text-3xl text-white">All listings by {agent.name}</h2>
