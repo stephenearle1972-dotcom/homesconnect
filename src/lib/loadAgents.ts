@@ -8,6 +8,7 @@ function mapRow(row: Record<string, string>): Agent {
     photoUrl: row.photo_url || '',
     agencyLogoWhiteUrl: row.agency_logo_white_url || '',
     agencyLogoColourUrl: row.agency_logo_colour_url || '',
+    agencyMarkWhiteUrl: row.agency_mark_white_url || '',
     email: row.email || '',
     jobTitle: row.job_title || '',
     bio: row.bio || '',

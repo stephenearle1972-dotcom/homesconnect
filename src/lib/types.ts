@@ -41,8 +41,14 @@ export type Listing = {
 export type Agent = {
   agentName: string;
   photoUrl: string;
+  // Full wordmark logos — kept for other uses (e.g. a future agency page),
+  // not rendered inline next to the agent's name (too small to read there,
+  // and duplicates the adjacent agency-name text). See agencyMarkWhiteUrl.
   agencyLogoWhiteUrl: string;
   agencyLogoColourUrl: string;
+  // House-mark-only variant (icon, no wordmark) — this is what renders
+  // inline beside the agency name on the agent page.
+  agencyMarkWhiteUrl: string;
   email: string;
   jobTitle: string;
   bio: string;

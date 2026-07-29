@@ -68,11 +68,11 @@ export default function AgentPage() {
             {agent.agency && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <p className="text-soft text-lg">{agent.agency}</p>
-                {agentAssets?.agencyLogoWhiteUrl && (
+                {agentAssets?.agencyMarkWhiteUrl && (
                   <img
-                    src={agentAssets.agencyLogoWhiteUrl}
-                    alt={`${agent.agency} logo`}
-                    className="h-6 w-auto"
+                    src={agentAssets.agencyMarkWhiteUrl}
+                    alt={`${agent.agency} mark`}
+                    className="h-7 w-auto"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
