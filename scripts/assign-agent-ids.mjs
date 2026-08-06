@@ -12,11 +12,18 @@
 // Sheet ID resolves from HOMESCONNECT_SHEET_ID, else the known listings sheet.
 
 import {
-  getFirstTabName, getTabValues, updateValues, batchUpdate, listTabs,
+  getTabValues, updateValues, batchUpdate, listTabs,
 } from '../netlify/functions/_lib/sheets.js';
 
 const SHEET_ID = process.env.HOMESCONNECT_SHEET_ID || '1SMlKNPToUnmh0VzxJmcjti6DPsUML1K7xk4PqvOMKmU';
 const WRITE = process.argv.includes('--write');
+
+// Must be the PRODUCTION tab by name — the spreadsheet also holds pre-import
+// snapshot/backup/demo tabs, and their left-to-right order shifts over time
+// (e.g. PreSnapshot_* tabs have ended up left of this one). Picking
+// listTabs()[0] previously wrote agent_id into whichever tab happened to be
+// leftmost — a real incident risk, not a hypothetical. Pin by title instead.
+const PRODUCTION_TAB_NAME = 'HomesConnect Listings';
 
 // 0XXXXXXXXX -> 27XXXXXXXXX; strip +/spaces; leave already-27 numbers as-is.
 function normPhone(raw) {
@@ -34,9 +41,13 @@ function colLetter(idx0) { // 0-based column index -> A1 letter(s)
 }
 
 const allTabs = await listTabs(SHEET_ID);
-const firstTab = allTabs[0];
-const tab = firstTab.title;
-const tabGid = firstTab.sheetId;
+const prodTab = allTabs.find((t) => t.title === PRODUCTION_TAB_NAME);
+if (!prodTab) {
+  console.error(`Tab "${PRODUCTION_TAB_NAME}" not found. Tabs present: ${allTabs.map((t) => t.title).join(', ')}`);
+  process.exit(1);
+}
+const tab = prodTab.title;
+const tabGid = prodTab.sheetId;
 const values = await getTabValues(SHEET_ID, tab, 'A1:BZ5000');
 const headers = values[0] || [];
 const rows = values.slice(1).filter((r) => (r[0] || '').trim()); // non-empty id
