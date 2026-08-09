@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { trackPageView } from './lib/analytics';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ChatWidget from './components/ChatWidget';
@@ -22,6 +24,14 @@ import CookiesPage from './pages/CookiesPage';
 import CalculatorsPage from './pages/calculators/CalculatorsPage';
 
 export default function App() {
+  const location = useLocation();
+
+  // SPA routing means navigation never triggers a real page load, so GA
+  // never sees anything past the first page unless we send it manually.
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+
   return (
     <div className="min-h-screen flex flex-col bg-grad-dark">
       <Header />

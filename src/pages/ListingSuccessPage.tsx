@@ -1,8 +1,18 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { trackEvent } from '../lib/analytics';
 
+// payment_return fires on any visit to this URL, not only a genuine return
+// from PayFast — the `ref` param survives a bookmark/back-button revisit
+// too. ITN is the only real source of truth (see netlify/functions/
+// list-property.js / payfast-itn); same known limitation as CarsConnect.
 export default function ListingSuccessPage() {
   const [params] = useSearchParams();
   const ref = params.get('ref') || params.get('m_payment_id') || '';
+
+  useEffect(() => {
+    trackEvent('payment_return');
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">

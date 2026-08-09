@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../lib/seo';
+import { trackEvent } from '../lib/analytics';
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dkn6tnxao';
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'homesconnect_listings';
@@ -103,6 +104,8 @@ export default function ListPropertyPage() {
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const formStarted = useRef(false);
 
   const isPrivate = seller === 'private';
   const TIERS = tiersFor(seller);
@@ -112,6 +115,33 @@ export default function ListPropertyPage() {
     if (valid) setTier(initialTier);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTier]);
+
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    // threshold 0.1, not CarsConnect's 0.3: this form runs ~3200px tall
+    // against a typical ~800px viewport, so 30% of the whole element can
+    // never be simultaneously visible — that threshold would just never
+    // fire, ever, on this page. 0.1 is comfortably under the achievable
+    // max while still requiring genuine visibility, not a 1px sliver.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          trackEvent('sell_form_view');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  function markFormStarted() {
+    if (formStarted.current) return;
+    formStarted.current = true;
+    trackEvent('sell_form_start');
+  }
 
   const photoLimit = TIERS.find((t) => t.id === tier)!.photoLimit;
   const amount = TIERS.find((t) => t.id === tier)!.amount;
@@ -130,6 +160,7 @@ export default function ListPropertyPage() {
   }
 
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
+    markFormStarted();
     setForm((prev) => ({ ...prev, [k]: v }));
     if (errors[k as string]) setErrors((prev) => { const n = { ...prev }; delete n[k as string]; return n; });
   }
@@ -145,17 +176,28 @@ export default function ListPropertyPage() {
     try {
       const uploaded: string[] = [];
       for (const file of toUpload) {
+        trackEvent('photo_upload_start');
         const fd = new FormData();
         fd.append('file', file);
         fd.append('upload_preset', CLOUDINARY_PRESET);
         const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: fd });
         if (!res.ok) throw new Error(`Cloudinary ${res.status}`);
         const data = await res.json();
-        if (data.secure_url) uploaded.push(data.secure_url);
+        if (data.secure_url) {
+          uploaded.push(data.secure_url);
+          trackEvent('photo_upload_success');
+        } else {
+          trackEvent('photo_upload_fail', { reason: 'cloudinary_error' });
+        }
       }
       setImages((prev) => [...prev, ...uploaded]);
     } catch (err) {
       setErrors((prev) => ({ ...prev, images: 'One or more uploads failed — try again' }));
+      // Only the specific "Cloudinary <status>" throw above (a real HTTP
+      // rejection) counts as cloudinary_error; anything else here is a
+      // network-level failure (the fetch call itself never completed).
+      const reason = err instanceof Error && err.message.startsWith('Cloudinary') ? 'cloudinary_error' : 'network';
+      trackEvent('photo_upload_fail', { reason });
       console.error(err);
     } finally {
       setUploading(false);
@@ -192,6 +234,7 @@ export default function ListPropertyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    trackEvent('checkout_click');
     setAttemptedSubmit(true);
     if (!validate()) {
       const first = document.querySelector('[data-error="true"]') as HTMLElement | null;
@@ -223,6 +266,7 @@ export default function ListPropertyPage() {
         return;
       }
       // Build & submit a hidden form to PayFast
+      trackEvent('checkout_redirect');
       submitToPayfast(data.payfast_url, data.params);
     } catch (err) {
       setErrors({ form: 'Network error — try again' });
@@ -280,7 +324,7 @@ export default function ListPropertyPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-10 space-y-10">
+      <form ref={formRef} onSubmit={handleSubmit} className="mt-10 space-y-10">
         {/* Tier selection */}
         <FormSection title="1. Choose your tier">
           <div className="grid gap-4 md:grid-cols-3">
@@ -437,6 +481,7 @@ export default function ListPropertyPage() {
                 type="checkbox"
                 checked={disclaimerOk}
                 onChange={(e) => {
+                  markFormStarted();
                   setDisclaimerOk(e.target.checked);
                   if (errors.disclaimer) setErrors((prev) => { const n = { ...prev }; delete n.disclaimer; return n; });
                 }}
@@ -458,6 +503,7 @@ export default function ListPropertyPage() {
                 type="checkbox"
                 checked={ownershipOk}
                 onChange={(e) => {
+                  markFormStarted();
                   setOwnershipOk(e.target.checked);
                   if (errors.ownership_attested) setErrors((prev) => { const n = { ...prev }; delete n.ownership_attested; return n; });
                 }}
@@ -485,6 +531,7 @@ export default function ListPropertyPage() {
               type="checkbox"
               checked={contentTermsOk}
               onChange={(e) => {
+                markFormStarted();
                 setContentTermsOk(e.target.checked);
                 if (errors.contentTerms) setErrors((prev) => { const n = { ...prev }; delete n.contentTerms; return n; });
               }}
