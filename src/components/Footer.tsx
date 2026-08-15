@@ -43,7 +43,7 @@ export default function Footer() {
       </div>
       <div className="border-t border-border-soft">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs text-faint">
-          <p>© 2026 TownConnect (Pty) Ltd t/a HomesConnect · Reg 2026/106250/07</p>
+          <p>© {new Date().getFullYear()} TownConnect (Pty) Ltd t/a HomesConnect · Reg 2026/106250/07</p>
           <p>Powered by TownConnect technology</p>
         </div>
       </div>
